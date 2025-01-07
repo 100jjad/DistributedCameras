@@ -1,0 +1,11 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.TestWirelessSynchronizationOfMultipleDistributedCameras" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="fontFamily">@font/b_nazanin_bold</item>
+        <item name="colorPrimaryDark">#002D7A</item> <!-- رنگ تاریک برای پس‌زمینه نوار -->
+    </style>
+
+    <style name="Theme.TestWirelessSynchronizationOfMultipleDistributedCameras" parent="Base.Theme.TestWirelessSynchronizationOfMultipleDistributedCameras" />
+</resources>

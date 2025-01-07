@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Distributed Cameras</string>
+    <string-array name="frame_rate_options">
+        <item>30fps</item>
+        <item>60fps</item>
+        <item>120fps</item>
+    </string-array>
+</resources>
