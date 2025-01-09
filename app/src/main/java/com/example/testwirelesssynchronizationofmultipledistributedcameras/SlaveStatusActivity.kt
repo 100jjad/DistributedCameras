@@ -421,7 +421,7 @@ class SlaveStatusActivity : AppCompatActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@SlaveStatusActivity,
-                        "خطا در همگام‌سازی زمان",
+                        " خطا در همگام‌سازی زمان",
                         Toast.LENGTH_SHORT
                     ).show()
                 }

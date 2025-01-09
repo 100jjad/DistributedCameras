@@ -172,6 +172,16 @@ class SlaveStatusActivity2 : AppCompatActivity() {
         }
     }
 
+
+    private fun updateLocalTime2(offset: Long) {
+        val currentTime = System.currentTimeMillis() + (offset / 1_000_000)
+        val dateFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+        val formattedTime = dateFormat.format(Date(currentTime))
+        runOnUiThread {
+            tvLocalTime.text = "Local Time: $formattedTime"
+        }
+    }
+
     private fun updateLocalTime(offset: Long) {
         val currentTime = System.currentTimeMillis() + (offset / 1_000_000)
         val dateFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
