@@ -164,7 +164,12 @@ class SlaveStatusActivity2 : AppCompatActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@SlaveStatusActivity2,
-                        "سیبسیبس یخطا در همگام‌سازی زمان",
+                        "سیبسیبسسینتمببببببا" +
+                                "سیبمدسیبمد" +
+                                "سیبمدسنیب" +
+                                "سیبمنسدیب" +
+                                "سیبمدسیب" +
+                                " یخطا در همگام‌سازی زمان",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
