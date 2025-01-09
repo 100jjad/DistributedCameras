@@ -164,7 +164,7 @@ class SlaveStatusActivity2 : AppCompatActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@SlaveStatusActivity2,
-                        "خطا در همگام‌سازی زمان",
+                        "سیبسیبس یخطا در همگام‌سازی زمان",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -190,11 +190,6 @@ class SlaveStatusActivity2 : AppCompatActivity() {
             while (true) {
                 updateLocalTime(0)
                 updateLocalTime(0)
-                updateLocalTime(0)
-                updateLocalTime(0)
-                delay(1000)
-                delay(1000)
-                delay(1000)
             }
         }
     }
