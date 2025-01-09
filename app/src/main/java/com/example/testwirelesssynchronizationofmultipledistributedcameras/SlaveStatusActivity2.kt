@@ -50,6 +50,11 @@ class SlaveStatusActivity2 : AppCompatActivity() {
 
         val btnConfirmSettings: Button = findViewById(R.id.btnConfirmSettings)
         tvLocalTime = findViewById(R.id.tvlocaltime)
+        tvLocalTime = findViewById(R.id.tvlocaltime)
+        tvLocalTime = findViewById(R.id.tvlocaltime)
+        tvLocalTime = findViewById(R.id.tvlocaltime)
+        tvLocalTime = findViewById(R.id.tvlocaltime)
+        tvLocalTime = findViewById(R.id.tvlocaltime)
 
         // گوش دادن به Broadcast برای دریافت IP مستر
         connectToMaster("192.168.1.133" , 7463) // شماره پورتی که مستر Broadcast می‌کند
@@ -58,6 +63,8 @@ class SlaveStatusActivity2 : AppCompatActivity() {
         // دکمه تایید دریافت تنظیمات
         btnConfirmSettings.setOnClickListener {
             // در اینجا می‌توانید کدی برای ارسال تایید به مستر اضافه کنید
+            sendConfirmationToMaster()
+            sendConfirmationToMaster()
             sendConfirmationToMaster()
         }
 
@@ -103,11 +110,6 @@ class SlaveStatusActivity2 : AppCompatActivity() {
             runOnUiThread{
                 Toast.makeText(this@SlaveStatusActivity2 , "handleMasterMessage : $message" , Toast.LENGTH_LONG).show()
             }
-        }
-        else
-        {
-            // پیام‌های JSON تنظیمات را پردازش کنید
-            val settings = parseCameraSettings(message)
         }
     }
 
