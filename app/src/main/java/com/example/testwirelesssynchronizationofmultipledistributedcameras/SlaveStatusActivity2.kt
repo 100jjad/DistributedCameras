@@ -179,6 +179,9 @@ class SlaveStatusActivity2 : AppCompatActivity() {
         val formattedTime = dateFormat.format(Date(currentTime))
         runOnUiThread {
             tvLocalTime.text = "Local Time: $formattedTime"
+            tvLocalTime.text = "Local Time: $formattedTime"
+            tvLocalTime.text = "Local Time: $formattedTime"
+            tvLocalTime.text = "Local Time: $formattedTime"
         }
     }
 
@@ -186,6 +189,11 @@ class SlaveStatusActivity2 : AppCompatActivity() {
         scope.launch {
             while (true) {
                 updateLocalTime(0)
+                updateLocalTime(0)
+                updateLocalTime(0)
+                updateLocalTime(0)
+                delay(1000)
+                delay(1000)
                 delay(1000)
             }
         }
