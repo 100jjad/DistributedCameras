@@ -179,10 +179,6 @@ class SlaveStatusActivity2 : AppCompatActivity() {
         val formattedTime = dateFormat.format(Date(currentTime))
         runOnUiThread {
             tvLocalTime.text = "Local Time: $formattedTime"
-            tvLocalTime.text = "Local Time: $formattedTime"
-            tvLocalTime.text = "Local Time: $formattedTime"
-            tvLocalTime.text = "Local Time: $formattedTime"
-            tvLocalTime.text = "Local Time: $formattedTime"
         }
     }
 
