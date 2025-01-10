@@ -38,6 +38,7 @@ class MasterStatusActivity : AppCompatActivity() {
     private val messageQueue: Queue<Pair<String, Socket>> = LinkedList() // صف پیام‌ها
     private lateinit var tvLocalTime: TextView
     var t2 : Long = 0
+    var counter = 0
 
     // لیست FPS های دریافتی
     private val commonFpsList = mutableListOf<Int>() // لیست FPS
@@ -196,6 +197,7 @@ class MasterStatusActivity : AppCompatActivity() {
                     if (message != null) {
                         if(message.startsWith("TIME_REQUEST"))
                         {
+                            counter++
                             t2 = System.currentTimeMillis() // زمان دریافت درخواست
                         }
                         Log.d(TAG, "Message from client: $message")
@@ -204,9 +206,10 @@ class MasterStatusActivity : AppCompatActivity() {
                             messageQueue.add(Pair(message, clientSocket))
                         }
 
+                        processMessageQueue()
 
                         // پیام دریافتی رو پردازش می‌کنیم
-                        processClientMessage(message, clientSocket)
+                        //processClientMessage(message, clientSocket)
 
                     }
                 }
@@ -281,7 +284,7 @@ class MasterStatusActivity : AppCompatActivity() {
         }
 
 
-        processMessageQueue() // اطمینان از اینکه بلافاصله پردازش انجام می‌شود
+        //processMessageQueue() // اطمینان از اینکه بلافاصله پردازش انجام می‌شود
     }
 
     // ارسال تنظیمات به همه اسلیوها

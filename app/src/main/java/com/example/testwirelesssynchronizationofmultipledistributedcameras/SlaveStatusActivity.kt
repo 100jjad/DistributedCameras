@@ -13,8 +13,10 @@ import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataC
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.TimeSyncManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -43,9 +45,11 @@ class SlaveStatusActivity : AppCompatActivity() {
     private var validResponses = 0
     private var requestId = 0L
     private val requestTimes = mutableMapOf<Long, Long>()
-    private var requestSendTime: Long? = null
+    private var requestReciveTime = mutableMapOf<Long, Long>()
     private val scope = CoroutineScope(Dispatchers.IO)
     private val scope2 = CoroutineScope(Dispatchers.IO)
+    private val scope3 = CoroutineScope(Dispatchers.IO)
+    private var updateJob: Job? = null
     private lateinit var supportedFps: List<Int>
     private lateinit var tvLocalTime: TextView
 
@@ -119,11 +123,6 @@ class SlaveStatusActivity : AppCompatActivity() {
             val settings = parseCameraSettings(message.removePrefix("Camera_Setting:"))
             runOnUiThread {
                 updateUIWithSettings(settings)
-                Toast.makeText(
-                    this@SlaveStatusActivity,
-                    "Cameara Parse ",
-                    Toast.LENGTH_SHORT
-                ).show()
             }
         }
         else if (message.startsWith("Camera_Setting:")) {
@@ -139,6 +138,7 @@ class SlaveStatusActivity : AppCompatActivity() {
             }
         }
         else if (message.startsWith("TIME_RESPONSE:")) {
+            Log.w(TAG, "TIME_RESPONSE : $message")
             // فراخوانی ادامه محاسبات همگام‌سازی زمان
             processTimeResponse(message)
         } else {
@@ -212,8 +212,6 @@ class SlaveStatusActivity : AppCompatActivity() {
         scope.launch {
             try {
                 //output?.println("CONFIRM_SETTINGS")
-
-
                 runOnUiThread {
                     Toast.makeText(
                         this@SlaveStatusActivity,
@@ -439,6 +437,9 @@ class SlaveStatusActivity : AppCompatActivity() {
                 val t4 = System.currentTimeMillis()
                 val t1 = requestTimes[requestId] ?: return // فرض بر اینکه t1 در لحظه تقریبی شروع است
 
+                // شمارش تعداد پیام‌های دریافتی
+                requestReciveTime[requestId] = (requestReciveTime[requestId] ?: 0) + 1
+
                 if (t2 != null && t3 != null) {
                     val delay = (t4 - t1) - (t3 - t2)
                     val offset = ((t2 - t1) + (t3 - t4)) / 2
@@ -501,8 +502,11 @@ class SlaveStatusActivity : AppCompatActivity() {
 
 
     private fun updateLocalTimePeriodically() {
-        scope2.launch {
-            while (true) {
+        // اگر Job قبلی در حال اجرا است، آن را لغو کن
+        updateJob?.cancel()
+        // ایجاد Job جدید برای بروز رسانی زمان
+        updateJob = scope3.launch {
+            while (isActive) { // اطمینان از اجرای امن در زمان لغو Job
                 updateLocalTime(TimeSyncManager.getDelay(), TimeSyncManager.getOffset())
                 delay(1000)
             }
