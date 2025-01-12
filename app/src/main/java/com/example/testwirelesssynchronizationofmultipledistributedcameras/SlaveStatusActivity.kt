@@ -35,21 +35,27 @@ import java.util.Enumeration
 import java.util.Locale
 
 class SlaveStatusActivity : AppCompatActivity() {
-
+    // ارتباطات و مسیر ورودی و خروجی
     private var slaveSocket: Socket? = null
     private var output: PrintWriter? = null
     private var input: BufferedReader? = null
     private var masterIp: String? = null
+
+    //متغیر های مربوط به همزمانی زمان محلی و کنترل تبادل پیام ها و تعداد
     private var totalDelay = 0L
     private var totalOffset = 0L
     private var validResponses = 0
     private var requestId = 0L
     private val requestTimes = mutableMapOf<Long, Long>()
     private var requestReciveTime = mutableMapOf<Long, Long>()
+    private var updateJob: Job? = null
+
+    //ترد های مربوط به پردازش موازی و اسکوپ های مختلف برنامه
     private val scope = CoroutineScope(Dispatchers.IO)
     private val scope2 = CoroutineScope(Dispatchers.IO)
     private val scope3 = CoroutineScope(Dispatchers.IO)
-    private var updateJob: Job? = null
+
+    //متغیر های مربوط به تنظیمات مشترک و نمایش
     private lateinit var supportedFps: List<Int>
     private lateinit var tvLocalTime: TextView
 
@@ -117,15 +123,13 @@ class SlaveStatusActivity : AppCompatActivity() {
 
         if (message.startsWith("MASTER_IP:")) {
             masterIp = message.removePrefix("MASTER_IP:")
-        }
-        else if (message.startsWith("Camera_Setting:")) {
+        } else if (message.startsWith("Camera_Setting:")) {
             // پیام‌های JSON تنظیمات را پردازش کنید
             val settings = parseCameraSettings(message.removePrefix("Camera_Setting:"))
             runOnUiThread {
                 updateUIWithSettings(settings)
             }
-        }
-        else if (message.startsWith("Camera_Setting:")) {
+        } else if (message.startsWith("Camera_Setting:")) {
             // پیام‌های JSON تنظیمات را پردازش کنید
             val settings = parseCameraSettings(message.removePrefix("Camera_Setting:"))
             runOnUiThread {
@@ -136,18 +140,17 @@ class SlaveStatusActivity : AppCompatActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
-        }
-        else if (message.startsWith("TIME_RESPONSE:")) {
+        } else if (message.startsWith("TIME_RESPONSE:")) {
             Log.w(TAG, "TIME_RESPONSE : $message")
             // فراخوانی ادامه محاسبات همگام‌سازی زمان
             processTimeResponse(message)
         } else {
             Log.w(TAG, "پیام ناشناس دریافت شد: $message")
             // پیام‌های JSON تنظیمات را پردازش کنید
-/*            val settings = parseCameraSettings(message)
-            runOnUiThread {
-                updateUIWithSettings(settings)
-            }*/
+            /*            val settings = parseCameraSettings(message)
+                        runOnUiThread {
+                            updateUIWithSettings(settings)
+                        }*/
         }
     }
 
@@ -304,82 +307,6 @@ class SlaveStatusActivity : AppCompatActivity() {
         return null // در صورتی که آدرس پیدا نشد
     }
 
-/*
-
-    private fun synchronizeTimeWithMaster(){
-        scope2.launch {
-            try {
-                var totalDelay = 0L
-                var totalOffset = 0L
-                var validResponses = 0
-
-                repeat(5) {
-                    // ذخیره زمان ارسال درخواست
-                    val currentRequestId = requestId++
-                    requestTimes[currentRequestId] = System.currentTimeMillis()
-                    val t1 = System.currentTimeMillis()
-                    output?.println("TIME_REQUEST:$currentRequestId")
-                    Log.d(TAG, "Sent TIME_REQUEST with ID: $currentRequestId")
-
-                    withTimeout(1000) {
-                        val response = input?.readLine()
-                        val t4 = System.currentTimeMillis()
-
-                        if (response != null && response.startsWith("TIME_RESPONSE:")) {
-                            val timestamps = response.removePrefix("TIME_RESPONSE:").split(",")
-                            if (timestamps.size == 2) {
-                                val t2 = timestamps[0].toLong() // زمان دریافت درخواست در مستر
-                                val t3 = timestamps[1].toLong() // زمان ارسال پاسخ در مستر
-
-                                // محاسبه تأخیر و آفست
-                                val delay = (t4 - t1) - (t3 - t2)
-                                val offset = ((t2 - t1) + (t3 - t4)) / 2
-
-
-                                totalDelay += delay
-                                totalOffset += offset
-                                validResponses++
-
-                                Log.d(TAG, "Offset: $offset ms, Delay: $delay ms")
-                            }
-                        }
-                    }
-                    delay(500)
-                }
-
-                if (validResponses > 0) {
-                    val avgDelay = totalDelay / validResponses
-                    val avgOffset = totalOffset / validResponses
-                    TimeSyncManager.setDelay(avgDelay)
-                    TimeSyncManager.setOffset(avgOffset)
-
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@SlaveStatusActivity,
-                            "synchronizeTimeWithMaster : $validResponses",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-
-                    Log.d(TAG, "Average Offset: $avgOffset ms, Average Delay: $avgDelay ms")
-
-                    updateLocalTimePeriodically()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                runOnUiThread {
-                    Toast.makeText(
-                        this@SlaveStatusActivity,
-                        "خطا در همگام‌سازی زمان",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
-    }
-
-*/
-
     private fun synchronizeTimeWithMaster() {
         scope2.launch {
             try {
@@ -464,13 +391,13 @@ class SlaveStatusActivity : AppCompatActivity() {
                                 Toast.LENGTH_LONG
                             ).show()
                         }
-                         updateLocalTimePeriodically()
+                        updateLocalTimePeriodically()
                         Log.d(TAG, "Average Offset: $avgOffset ms, Average Delay: $avgDelay ms")
 
-/*                        // بازنشانی مقادیر
-                        totalDelay = 0L
-                        totalOffset = 0L
-                        validResponses = 0*/
+                        /*                        // بازنشانی مقادیر
+                                                totalDelay = 0L
+                                                totalOffset = 0L
+                                                validResponses = 0*/
                     }
                 }
             }
@@ -498,7 +425,6 @@ class SlaveStatusActivity : AppCompatActivity() {
             tvLocalTime.text = "Master Time: $formattedTime\nDelay: $delay ms\nOffset: $offset ms"
         }
     }
-
 
 
     private fun updateLocalTimePeriodically() {

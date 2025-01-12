@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/camera"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        tools:context=".CameraActivity">
+
+        <!-- پیش نمایش دوربین -->
+        <FrameLayout
+            android:id="@+id/cameraPreview"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@android:color/darker_gray"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:ignore="MissingConstraints" />
+
+        <!-- دکمه روشن/خاموش کردن فلاش -->
+        <ImageButton
+            android:id="@+id/btnFlash"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/rounded_square_gray"
+            android:contentDescription="flash_toggle"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/flashoff"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0" />
+
+        <!-- نمایش اختلاف فاز دوربین -->
+        <TextView
+            android:id="@+id/tvPhaseDifference"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Phase Difference: 0ms"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            app:layout_constraintBottom_toBottomOf="@+id/btnFlash"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- دکمه شروع فیلمبرداری -->
+        <ImageButton
+            android:id="@+id/btnRecord"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:background="@drawable/recordbutton"
+            android:contentDescription="start_recording"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.95" />
+
+        <!-- SeekBar تنظیم روشنایی -->
+        <SeekBar
+            android:id="@+id/seekBarBrightness"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@id/cameraPreview"
+            app:layout_constraintStart_toStartOf="@id/cameraPreview"
+            app:layout_constraintEnd_toEndOf="@id/cameraPreview"
+            app:layout_constraintBottom_toBottomOf="@id/cameraPreview" />
+        <!--
+            android:progressDrawable="@drawable/seekbar_progress"
+            android:thumb="@drawable/seekbar_thumb"-->
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -37,8 +37,7 @@ class MasterStatusActivity : AppCompatActivity() {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val messageQueue: Queue<Pair<String, Socket>> = LinkedList() // صف پیام‌ها
     private lateinit var tvLocalTime: TextView
-    var t2 : Long = 0
-    var counter = 0
+    var t2: Long = 0
 
     // لیست FPS های دریافتی
     private val commonFpsList = mutableListOf<Int>() // لیست FPS
@@ -195,9 +194,7 @@ class MasterStatusActivity : AppCompatActivity() {
                 while (true) {
                     val message = input.readLine()
                     if (message != null) {
-                        if(message.startsWith("TIME_REQUEST"))
-                        {
-                            counter++
+                        if (message.startsWith("TIME_REQUEST")) {
                             t2 = System.currentTimeMillis() // زمان دریافت درخواست
                         }
                         Log.d(TAG, "Message from client: $message")
@@ -252,14 +249,17 @@ class MasterStatusActivity : AppCompatActivity() {
             message.startsWith("FPS_Supported:") -> {
                 val parts = message.removePrefix("FPS_Supported:").split(":")
                 if (parts.size == 2) {
-                    val fpsList = parts[1].removeSurrounding("[", "]").split(", ").mapNotNull { it.toIntOrNull() }
+                    val fpsList = parts[1].removeSurrounding("[", "]").split(", ")
+                        .mapNotNull { it.toIntOrNull() }
                     updateCommonFps(fpsList)
                 }
             }
+
             message.startsWith("START_RECORDING:") -> {
                 // در اینجا می‌توانید دستورات مربوط به شروع ضبط را پیاده‌سازی کنید
                 Log.d(TAG, "Received START_RECORDING command")
             }
+
             message.startsWith("TIME_REQUEST") -> {
                 scope.launch {
                     try {
@@ -268,16 +268,21 @@ class MasterStatusActivity : AppCompatActivity() {
                         val t3 = System.currentTimeMillis() // زمان ارسال پاسخ
                         output?.println("TIME_RESPONSE:$id,$t2,$t3")
                         output?.flush()
-                        Log.d(TAG, "Sent TIME_RESPONSE: id=$id t2=$t2, t3=$t3 to ${clientSocket.inetAddress.hostAddress}")
+                        Log.d(
+                            TAG,
+                            "Sent TIME_RESPONSE: id=$id t2=$t2, t3=$t3 to ${clientSocket.inetAddress.hostAddress}"
+                        )
                     } catch (e: Exception) {
                         Log.e(TAG, "Error sending TIME_RESPONSE: ${e.message}", e)
                     }
                 }
             }
+
             message.startsWith("STOP_SERVER:") -> {
                 Log.d(TAG, "Received STOP_SERVER command")
                 stopServer()
             }
+
             else -> {
                 Log.d(TAG, "Unknown message: $message")
             }
@@ -306,25 +311,6 @@ class MasterStatusActivity : AppCompatActivity() {
             }
         }
     }
-
-/*    // ارسال تنظیمات به همه اسلیوها
-    fun sendTimeToSlaves(t: Long, clientSocket: Socket) {
-        scope.launch {
-            try {
-                val writer = PrintWriter(clientSocket.getOutputStream(), true)
-                writer.println("TIME_RESPONSE:$t")
-                Log.d(TAG, "Time sent to ${clientSocket.inetAddress.hostAddress}")
-            } catch (e: Exception) {
-
-                runOnUiThread { Toast.makeText(this@MasterStatusActivity , "sendTimeToSlaves Function Failed" , Toast.LENGTH_LONG).show() }
-                Log.e(
-                    TAG,
-                    "Error sending Time to ${clientSocket.inetAddress.hostAddress}: ${e.message}",
-                    e
-                )
-            }
-        }
-    }*/
 
 
     private fun updateCommonFps(fpsList: List<Int>) {
@@ -377,7 +363,8 @@ class MasterStatusActivity : AppCompatActivity() {
         scope.launch {
             while (true) {
                 val currentTime = System.currentTimeMillis()
-                val formattedTime = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date(currentTime)
+                val formattedTime = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(
+                    Date(currentTime)
                 )
                 runOnUiThread {
                     tvLocalTime.text = "Master Time: $formattedTime"

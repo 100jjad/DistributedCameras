@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#D3D3D3" /> <!-- رنگ طوسی -->
+    <corners android:radius="12dp" /> <!-- گرد کردن گوشه‌ها -->
+    <size android:width="50dp" android:height="50dp" /> <!-- ابعاد مربع -->
+</shape>
