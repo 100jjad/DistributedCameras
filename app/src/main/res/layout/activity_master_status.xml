@@ -184,11 +184,30 @@
         android:text="ارسال تنظیمات به اسلیوها"
         android:textColor="#FFFFFF"
         android:textSize="18sp"
+        app:layout_constraintBottom_toTopOf="@+id/btnVideoRecord"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.98"
+        app:layout_marginBaseline="16dp" />
+
+
+    <Button
+        android:id="@+id/btnVideoRecord"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="@color/primary"
+        android:text="ضبط ویدئو"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.9"
+        app:layout_constraintVertical_bias="1.0"
         app:layout_marginBaseline="16dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

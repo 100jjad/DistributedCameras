@@ -27,6 +27,7 @@
         <activity android:name=".MasterStatusActivity" />
         <activity android:name=".SlaveStatusActivity"
             android:exported="true"/>
+        <activity android:name=".CameraActivity" />
 
     </application>
 

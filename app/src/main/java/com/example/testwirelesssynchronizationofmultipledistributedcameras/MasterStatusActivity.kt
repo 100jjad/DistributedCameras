@@ -1,5 +1,6 @@
 package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
+import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Bundle
@@ -61,6 +62,7 @@ class MasterStatusActivity : AppCompatActivity() {
         val spinnerFrameRate: Spinner = findViewById(R.id.spinnerFrameRate)
         val etDuration: EditText = findViewById(R.id.etDuration)
         val btnSendSettings: Button = findViewById(R.id.btnSendSettings)
+        val btnVideoRecord: Button = findViewById(R.id.btnVideoRecord)
         tvLocalTime = findViewById(R.id.tvlocaltime)
 
 
@@ -89,6 +91,10 @@ class MasterStatusActivity : AppCompatActivity() {
 
             sendSettingsToSlaves(CameraSettings(flashEnabled, frameRate, duration))
 
+        }
+
+        btnVideoRecord.setOnClickListener {
+            startVideoRecording()
         }
 
         updateLocalTimePeriodically()
@@ -372,6 +378,25 @@ class MasterStatusActivity : AppCompatActivity() {
                 delay(1000)
             }
         }
+    }
+
+
+    private fun startVideoRecording() {
+        scope.launch {
+            try {
+                for (socket in slaveSockets) {
+                    val writer = PrintWriter(socket.getOutputStream(), true)
+                    writer.println("READY_FOR_RECORDING")
+                    Log.d(TAG, "Sent READY_FOR_RECORDING command to ${socket.inetAddress.hostAddress}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending START_RECORDING command: ${e.message}", e)
+            }
+        }
+
+        // انتقال به صفحه ضبط ویدئو برای مستر
+        val intent = Intent(this, CameraActivity::class.java)
+        startActivity(intent)
     }
 
     // بستن سرور

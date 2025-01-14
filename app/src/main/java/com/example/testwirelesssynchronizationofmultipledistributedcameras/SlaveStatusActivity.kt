@@ -1,5 +1,6 @@
 package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
+import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Bundle
@@ -144,6 +145,11 @@ class SlaveStatusActivity : AppCompatActivity() {
             Log.w(TAG, "TIME_RESPONSE : $message")
             // فراخوانی ادامه محاسبات همگام‌سازی زمان
             processTimeResponse(message)
+        } else if (message.startsWith("READY_FOR_RECORDING")) {
+            Log.w(TAG, "Slave READY FOR RECORDING: $message")
+            // انتقال به صفحه ضبط ویدئو برای اسلیو
+            val intent = Intent(this, CameraActivity::class.java)
+            startActivity(intent)
         } else {
             Log.w(TAG, "پیام ناشناس دریافت شد: $message")
             // پیام‌های JSON تنظیمات را پردازش کنید
@@ -362,7 +368,8 @@ class SlaveStatusActivity : AppCompatActivity() {
                 val t2 = timestamps[1].toLongOrNull()
                 val t3 = timestamps[2].toLongOrNull()
                 val t4 = System.currentTimeMillis()
-                val t1 = requestTimes[requestId] ?: return // فرض بر اینکه t1 در لحظه تقریبی شروع است
+                val t1 =
+                    requestTimes[requestId] ?: return // فرض بر اینکه t1 در لحظه تقریبی شروع است
 
                 // شمارش تعداد پیام‌های دریافتی
                 requestReciveTime[requestId] = (requestReciveTime[requestId] ?: 0) + 1
