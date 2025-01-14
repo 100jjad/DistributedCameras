@@ -387,7 +387,10 @@ class MasterStatusActivity : AppCompatActivity() {
                 for (socket in slaveSockets) {
                     val writer = PrintWriter(socket.getOutputStream(), true)
                     writer.println("READY_FOR_RECORDING")
-                    Log.d(TAG, "Sent READY_FOR_RECORDING command to ${socket.inetAddress.hostAddress}")
+                    Log.d(
+                        TAG,
+                        "Sent READY_FOR_RECORDING command to ${socket.inetAddress.hostAddress}"
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending START_RECORDING command: ${e.message}", e)
