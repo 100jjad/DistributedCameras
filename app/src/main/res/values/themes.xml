@@ -7,5 +7,11 @@
         <item name="colorPrimaryDark">#002D7A</item> <!-- رنگ تاریک برای پس‌زمینه نوار -->
     </style>
 
+    <style name="Theme.AppCompat.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
     <style name="Theme.TestWirelessSynchronizationOfMultipleDistributedCameras" parent="Base.Theme.TestWirelessSynchronizationOfMultipleDistributedCameras" />
+
 </resources>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/camera"
+    xmlns:tools="http://schemas.android.com/tools">
+    <FrameLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- پیش‌نمایش دوربین -->
+        <TextureView
+            android:id="@+id/texture_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- منوی تنظیمات -->
+        <LinearLayout
+            android:id="@+id/settings_menu"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:background="#80000000"
+            android:padding="10dp"
+            android:layout_gravity="start">
+
+            <!-- انتخاب رزولوشن -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Resolution"
+                android:textColor="#FFFFFF" />
+
+            <Spinner
+                android:id="@+id/spinner_resolution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <!-- نرخ فریم -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Frame Rate"
+                android:textColor="#FFFFFF" />
+
+            <Spinner
+                android:id="@+id/spinner_frame_rate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <!-- نسبت تصویر -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Aspect Ratio"
+                android:textColor="#FFFFFF" />
+
+            <Spinner
+                android:id="@+id/spinner_aspect_ratio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <!-- دکمه روشن/خاموش کردن فلش -->
+            <Switch
+                android:id="@+id/switch_flash"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Flash"
+                android:textColor="#FFFFFF" />
+
+            <!-- دکمه روشن/خاموش کردن صدا -->
+            <Switch
+                android:id="@+id/switch_audio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Audio"
+                android:textColor="#FFFFFF" />
+
+            <!-- تایمر -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Timer (seconds)"
+                android:textColor="#FFFFFF" />
+
+            <EditText
+                android:id="@+id/edit_text_timer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </LinearLayout>
+
+        <!-- دکمه ضبط و زوم -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_gravity="bottom">
+
+            <!-- دکمه ضبط -->
+            <Button
+                android:id="@+id/btn_record"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Record" />
+
+            <!-- نوار زوم -->
+            <SeekBar
+                android:id="@+id/seekbar_zoom"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

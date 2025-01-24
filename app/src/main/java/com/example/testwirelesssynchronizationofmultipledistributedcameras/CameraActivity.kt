@@ -13,7 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 class CameraActivity : AppCompatActivity() {
-    private lateinit var textureView: TextureView
+    private lateinit var textureView: AutoFitTextureView2
     private lateinit var cameraManager: CameraManager
     private lateinit var cameraId: String
     private var cameraDevice: CameraDevice? = null
@@ -28,7 +28,7 @@ class CameraActivity : AppCompatActivity() {
         // تنظیم SurfaceTextureListener
         textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-                setupCamera()
+                setupCamera(width, height)
             }
 
             override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
@@ -37,18 +37,18 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupCamera() {
+    private fun setupCamera(viewWidth: Int, viewHeight: Int) {
         cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
         cameraId = cameraManager.cameraIdList[0] // انتخاب اولین دوربین (عموماً دوربین پشتی)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            openCamera()
+            openCamera(viewWidth, viewHeight)
         } else {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
         }
     }
 
-    private fun openCamera() {
+    private fun openCamera(viewWidth: Int, viewHeight: Int) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Camera permission not granted.", Toast.LENGTH_SHORT).show()
             return
@@ -77,12 +77,29 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-
     private fun startPreview() {
         try {
             val texture = textureView.surfaceTexture ?: return
-            texture.setDefaultBufferSize(textureView.width, textureView.height)
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            val previewSize = map?.getOutputSizes(SurfaceTexture::class.java)?.maxByOrNull {
+                it.width * it.height
+            }!!
+
+            // محاسبه نسبت ابعاد پیش‌نمایش دوربین
+            textureView.setAspectRatio(previewSize.width, previewSize.height)
+
+            // تنظیم ابعاد پیش‌فرض Buffer
+            texture.setDefaultBufferSize(previewSize.width, previewSize.height)
             val surface = Surface(texture)
+
+            // محاسبه ابعاد مناسب برای نمایش
+            val viewWidth = 500  // حداقل 500dp یا اندازه مورد نظر
+            val viewHeight = (viewWidth * previewSize.height) / previewSize.width
+
+            // تنظیم اندازه نهایی برای TextureView
+            textureView.layoutParams.width = viewWidth
+            textureView.layoutParams.height = viewHeight
 
             val captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             captureRequestBuilder.addTarget(surface)
@@ -106,10 +123,11 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CAMERA_PERMISSION && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            setupCamera()
+            textureView.post { setupCamera(textureView.width, textureView.height) }
         } else {
             Toast.makeText(this, "Camera permission is required.", Toast.LENGTH_SHORT).show()
         }

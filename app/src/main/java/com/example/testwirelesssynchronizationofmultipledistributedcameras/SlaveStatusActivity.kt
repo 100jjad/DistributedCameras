@@ -148,7 +148,7 @@ class SlaveStatusActivity : AppCompatActivity() {
         } else if (message.startsWith("READY_FOR_RECORDING")) {
             Log.w(TAG, "Slave READY FOR RECORDING: $message")
             // انتقال به صفحه ضبط ویدئو برای اسلیو
-            val intent = Intent(this, CameraActivity::class.java)
+            val intent = Intent(this, CustomCameraUI::class.java)
             startActivity(intent)
         } else {
             Log.w(TAG, "پیام ناشناس دریافت شد: $message")

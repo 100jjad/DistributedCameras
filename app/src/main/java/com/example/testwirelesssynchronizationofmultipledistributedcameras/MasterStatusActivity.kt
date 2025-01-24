@@ -398,7 +398,7 @@ class MasterStatusActivity : AppCompatActivity() {
         }
 
         // انتقال به صفحه ضبط ویدئو برای مستر
-        val intent = Intent(this, CameraActivity::class.java)
+        val intent = Intent(this, CustomCameraUI::class.java)
         startActivity(intent)
     }
 
