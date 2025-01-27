@@ -1,21 +1,34 @@
 package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
 import android.app.Activity
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.Window
-import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.widget.ImageView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 
 class CustomCameraUI : Activity() {
     private lateinit var textureView: AutoFitTextureView
     private lateinit var camera2: Camera2
+
+    // متغیرها برای ذخیره مقادیر
+    private var flashStatus: String? = null
+    private var frameRate: String? = null
+    private var duration: String? = null
+
+    // متغیرهای ImageView برای دکمه‌ها
+    private lateinit var ivFlashAuto: ImageView
+    private lateinit var ivCaptureImage: ImageView
+    private lateinit var ivVideoSaved: ImageView
+    private lateinit var ivRotateCamera: ImageView
+
+    companion object {
+        private const val TAG = "CustomCameraUI"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,8 +43,11 @@ class CustomCameraUI : Activity() {
         // مقداردهی اولیه Camera2
         camera2 = Camera2(this, textureView)
 
-    }
 
+        // فراخوانی تابع initialize برای دریافت و ذخیره مقادیر
+        initialize()
+
+    }
 
     override fun onResume() {
         super.onResume()
@@ -68,5 +84,51 @@ class CustomCameraUI : Activity() {
 
         // شفاف کردن رنگ پس‌زمینه Navigation Bar
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
+    }
+
+
+    private fun initialize() {
+        // مقداردهی ImageView‌ها
+        ivFlashAuto = findViewById(R.id.iv_camera_flash_auto)
+        ivCaptureImage = findViewById(R.id.iv_capture_image)
+        ivVideoSaved = findViewById(R.id.iv_video_saved)
+        ivRotateCamera = findViewById(R.id.iv_rotate_camera)
+
+        // دریافت مقادیر از Intent
+        flashStatus = intent.getStringExtra("flash_status")
+        frameRate = intent.getStringExtra("frame_rate")
+        duration = intent.getStringExtra("duration")
+
+        // نمایش مقادیر با استفاده از Toast
+        Toast.makeText(this, "Flash Status: $flashStatus", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Frame Rate: $frameRate", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Duration: $duration", Toast.LENGTH_SHORT).show()
+
+
+        // اضافه کردن اکشن کلیک برای هر ImageView
+        ivFlashAuto.setOnClickListener {
+            // اکشن برای Flash Auto
+            Toast.makeText(this, "Flash Auto clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        ivCaptureImage.setOnClickListener {
+            // اکشن برای دکمه ضبط
+            Toast.makeText(this, "Capture Image clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        ivVideoSaved.setOnClickListener {
+            // اکشن برای دکمه ویدئو ذخیره شده
+            Toast.makeText(this, "Video Saved clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        ivRotateCamera.setOnClickListener {
+            // اکشن برای دکمه چرخش دوربین
+            Toast.makeText(this, "Rotate Camera clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        // نمایش مقادیر در Log برای بررسی
+        Log.d(TAG, "Flash Status: $flashStatus")
+        Log.d(TAG, "Frame Rate: $frameRate")
+        Log.d(TAG, "Duration: $duration")
     }
 }

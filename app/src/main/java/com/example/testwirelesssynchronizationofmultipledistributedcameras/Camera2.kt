@@ -310,7 +310,6 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         ) {
 //setup camera called here
 
-            Toast.makeText(activity, "Camera 2  : دسترسی وجود دارد", Toast.LENGTH_SHORT).show()
             setUpCameraOutputs(width, height)
             configureTransform(width, height)
 
@@ -319,7 +318,6 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
         } else {
             ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
-            Toast.makeText(activity , "Camera 2 : دسترسی وجود ندارد" , Toast.LENGTH_LONG).show()
             Log.e("Camera2", "دسترسی وجود ندارد")
         }
     }

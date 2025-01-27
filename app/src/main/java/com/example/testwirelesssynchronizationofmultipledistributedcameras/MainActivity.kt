@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun navigateToStatusPage(role: String) {
         val intent = if (role == "master") {
-            Intent(this, MasterStatusActivity::class.java)
+            Intent(this, MasterActivity::class.java)
         } else {
             Intent(this, SlaveStatusActivity::class.java)
         }

@@ -13,6 +13,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
         android:orientation="vertical"
         app:layout_constraintBottom_toTopOf="@+id/btnConfirmSettings"
         app:layout_constraintEnd_toEndOf="parent"
@@ -47,11 +48,11 @@
 
             <TextView
                 android:id="@+id/tvlocaltime"
-                android:layout_weight="0.5"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="23:48:13"
+                android:layout_weight="0.5"
                 android:gravity="center"
+                android:text="23:48:13"
                 android:textColor="@color/black"
                 android:textSize="18sp" />
         </LinearLayout>
@@ -191,7 +192,8 @@
         android:textSize="18sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.64" />
+        app:layout_constraintVertical_bias="0.85"
+        tools:layout_editor_absoluteX="8dp" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

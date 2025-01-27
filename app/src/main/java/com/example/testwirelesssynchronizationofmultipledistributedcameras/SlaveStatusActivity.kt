@@ -147,9 +147,10 @@ class SlaveStatusActivity : AppCompatActivity() {
             processTimeResponse(message)
         } else if (message.startsWith("READY_FOR_RECORDING")) {
             Log.w(TAG, "Slave READY FOR RECORDING: $message")
-            // انتقال به صفحه ضبط ویدئو برای اسلیو
-            val intent = Intent(this, CustomCameraUI::class.java)
-            startActivity(intent)
+
+            // فراخوانی تابع برای انتقال تنظیمات
+            transferCameraSettings()
+
         } else {
             Log.w(TAG, "پیام ناشناس دریافت شد: $message")
             // پیام‌های JSON تنظیمات را پردازش کنید
@@ -329,23 +330,8 @@ class SlaveStatusActivity : AppCompatActivity() {
                 val avgDelay = TimeSyncManager.getDelay()
                 val avgOffset = TimeSyncManager.getOffset()
 
-                runOnUiThread {
-                    Toast.makeText(
-                        this@SlaveStatusActivity,
-                        "Synchronization Complete: Delay=$avgDelay, Offset=$avgOffset",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
 
                 Log.d(TAG, "Final Average Offset: $avgOffset ms, Final Average Delay: $avgDelay ms")
-
-                runOnUiThread {
-                    Toast.makeText(
-                        this@SlaveStatusActivity,
-                        "synchronizeTimeWithMaster : $validResponses",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -384,20 +370,14 @@ class SlaveStatusActivity : AppCompatActivity() {
 
                     Log.d(TAG, "Offset: $offset ms, Delay: $delay ms")
 
-                    if (validResponses > 4) {
+                    if (validResponses > 7) {
                         val avgDelay = totalDelay / validResponses
                         val avgOffset = totalOffset / validResponses
 
                         TimeSyncManager.setDelay(avgDelay)
                         TimeSyncManager.setOffset(avgOffset)
 
-                        runOnUiThread {
-                            Toast.makeText(
-                                this@SlaveStatusActivity,
-                                "processTimeResponse : $validResponses",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+
                         updateLocalTimePeriodically()
                         Log.d(TAG, "Average Offset: $avgOffset ms, Average Delay: $avgDelay ms")
 
@@ -445,6 +425,34 @@ class SlaveStatusActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun transferCameraSettings() {
+        // گرفتن مقادیر از TextView ها
+        val flashStatus = findViewById<TextView>(R.id.tvFlashStatus).text.toString()
+        val frameRate = findViewById<TextView>(R.id.tvFrameRate).text.toString()
+        val duration = findViewById<TextView>(R.id.tvDuration).text.toString()
+
+        // بررسی اگر مقادیر خالی بودند
+        if (flashStatus.isEmpty() || frameRate.isEmpty() || duration.isEmpty()) {
+            // چاپ پیام خطا
+            Log.w(TAG, "تنظیمات از مستر دریافت نشد")
+
+            // نمایش Toast با پیام خطا
+            Toast.makeText(this, "تنظیمات از مستر دریافت نشد", Toast.LENGTH_SHORT).show()
+        } else {
+            // انتقال به صفحه ضبط ویدئو برای اسلیو
+            val intent = Intent(this, CustomCameraUI::class.java)
+
+            // اضافه کردن مقادیر به Intent
+            intent.putExtra("flash_status", flashStatus)
+            intent.putExtra("frame_rate", frameRate)
+            intent.putExtra("duration", duration)
+
+            // شروع Activity
+            startActivity(intent)
+        }
+    }
+
 
 
     override fun onDestroy() {

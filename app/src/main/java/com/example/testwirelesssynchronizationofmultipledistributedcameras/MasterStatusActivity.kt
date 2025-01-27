@@ -46,6 +46,11 @@ class MasterStatusActivity : AppCompatActivity() {
     private lateinit var spinnerAdapter: ArrayAdapter<String>
 
 
+    private lateinit var switchFlash: Switch
+    private lateinit var spinnerFrameRate: Spinner
+    private lateinit var etDuration: EditText
+
+
     companion object {
         private const val TAG = "MasterServer"
     }
@@ -58,11 +63,11 @@ class MasterStatusActivity : AppCompatActivity() {
 
 
         val lvSlaves: ListView = findViewById(R.id.lvSlaves)
-        val switchFlash: Switch = findViewById(R.id.switchFlash)
-        val spinnerFrameRate: Spinner = findViewById(R.id.spinnerFrameRate)
-        val etDuration: EditText = findViewById(R.id.etDuration)
         val btnSendSettings: Button = findViewById(R.id.btnSendSettings)
         val btnVideoRecord: Button = findViewById(R.id.btnVideoRecord)
+        switchFlash = findViewById(R.id.switchFlash)
+        spinnerFrameRate = findViewById(R.id.spinnerFrameRate)
+        etDuration = findViewById(R.id.etDuration)
         tvLocalTime = findViewById(R.id.tvlocaltime)
 
 
@@ -293,9 +298,6 @@ class MasterStatusActivity : AppCompatActivity() {
                 Log.d(TAG, "Unknown message: $message")
             }
         }
-
-
-        //processMessageQueue() // اطمینان از اینکه بلافاصله پردازش انجام می‌شود
     }
 
     // ارسال تنظیمات به همه اسلیوها
@@ -396,9 +398,20 @@ class MasterStatusActivity : AppCompatActivity() {
                 Log.e(TAG, "Error sending START_RECORDING command: ${e.message}", e)
             }
         }
+        val flashEnabled = switchFlash.isChecked
+        val frameRate = spinnerFrameRate.selectedItem.toString().toIntOrNull() ?: 30
+        val duration = etDuration.text.toString().toIntOrNull() ?: 60
+        val flashStatus = if (flashEnabled) "روشن" else "خاموش"
 
-        // انتقال به صفحه ضبط ویدئو برای مستر
+        // انتقال به صفحه بعدی با intent
         val intent = Intent(this, CustomCameraUI::class.java)
+
+        // اضافه کردن مقادیر به Intent
+        intent.putExtra("flash_status", flashStatus)
+        intent.putExtra("frame_rate", frameRate.toString())
+        intent.putExtra("duration", duration.toString())
+
+        // شروع اکتیویتی بعدی
         startActivity(intent)
     }
 
