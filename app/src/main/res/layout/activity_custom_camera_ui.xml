@@ -159,11 +159,12 @@
     <!-- نوار exposure (به صورت یک SeekBar عمودی) -->
     <SeekBar
         android:id="@+id/exposure_slider"
-        android:layout_width="wrap_content"
-        android:layout_height="150dp"
+        android:layout_width="150dp"
+        android:layout_height="30dp"
         android:rotation="-90"
         android:layout_margin="16dp"
         android:visibility="gone"
+        android:thumb="@drawable/expo"
         android:thumbTint="@color/white"
         android:progressTint="@color/white"
         android:max="4"

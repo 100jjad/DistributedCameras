@@ -63,6 +63,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     private var mSensorOrientation = 0
 
 
+
+
     private val cameraCaptureCallBack = object : CameraCaptureSession.CaptureCallback() {
 
         private fun process(captureResult: CaptureResult) {
@@ -231,6 +233,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 //
 //    }
 
+
+
     private val surfaceTextureListener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
             Toast.makeText(activity , "width : $width , height : $height" , Toast.LENGTH_LONG).show()
@@ -342,6 +346,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
                     val streamConfigurationMap = cameraCharacteristics.get(
                         CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
                     )
+                    exposureCompensationRange = cameraCharacteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE)
+
 // For still image captures, we use the largest available size.
                     val largest = Collections.max(
                         streamConfigurationMap?.getOutputSizes(ImageFormat.JPEG)?.toList(),
@@ -432,6 +438,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
             e.printStackTrace()
         }
     }
+
 
     /**
      * Configures the necessary [android.graphics.Matrix] transformation to `mTextureView`.
@@ -929,6 +936,27 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
 
         this.onBitmapReady = onBitmapReady
         lockPreview()
+    }
+
+
+    // متد تنظیم exposure compensation:
+    fun setExposureCompensation(value: Int) {
+        // توجه داشته باشید که در حالت preview ممکن است builder موجود باشد
+        captureRequestBuilder?.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, value)
+        cameraCaptureSession?.setRepeatingRequest(captureRequestBuilder!!.build(), cameraCaptureCallBack, backgroundHandler)
+    }
+
+
+    fun autoOptimizeExposure() {
+        // اگر captureRequestBuilder آماده است
+        captureRequestBuilder?.let { builder ->
+            // تنظیم حالت AE به خودکار (با flash در صورت نیاز)
+            //builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
+            // تنظیم مقدار Exposure Compensation به صفر (یا مقدار دلخواه)
+            builder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 0)
+            // به‌روزرسانی درخواست تکراری
+            cameraCaptureSession?.setRepeatingRequest(builder.build(), cameraCaptureCallBack, backgroundHandler)
+        }
     }
 
 }

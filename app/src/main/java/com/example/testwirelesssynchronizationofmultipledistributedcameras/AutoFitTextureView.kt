@@ -47,6 +47,12 @@ class AutoFitTextureView : TextureView {
             }
         }
     }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        // اگر نیاز دارید عملیات خاصی هنگام کلیک انجام شود، آن را اینجا اضافه کنید.
+        return true
+    }
 /*
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
