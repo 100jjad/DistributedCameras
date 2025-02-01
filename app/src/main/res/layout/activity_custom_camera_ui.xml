@@ -11,7 +11,7 @@
 
     <com.example.testwirelesssynchronizationofmultipledistributedcameras.AutoFitTextureView
         android:id="@+id/camera_view"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
         android:adjustViewBounds="true"
@@ -38,12 +38,30 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.9" />
 
+
+
+    <ImageView
+        android:id="@+id/iv_camera_timer"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_centerInParent="true"
+        android:layout_marginStart="8dp"
+        android:contentDescription="@string/app_name"
+        android:rotation="-90"
+        android:src="@drawable/timer"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.5" />
+
     <ImageView
         android:id="@+id/iv_capture_image"
         android:layout_width="70dp"
         android:layout_height="70dp"
         android:layout_centerInParent="true"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="32dp"
         android:contentDescription="@string/app_name"
         android:src="@drawable/recordbutton"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -81,4 +99,75 @@
         app:layout_constraintEnd_toEndOf="@+id/iv_capture_image"
         app:layout_constraintStart_toStartOf="@+id/iv_capture_image"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="false"
+        android:digits="0123456789"
+        android:focusable="false"
+        android:gravity="center"
+        android:inputType="number"
+        android:maxLength="3"
+        android:minWidth="48dp"
+        android:minHeight="48dp"
+        android:padding="12dp"
+        android:rotation="-90"
+        android:text="8325"
+        android:textColor="@color/white"
+        android:textSize="10sp"
+        app:layout_constraintBottom_toBottomOf="@+id/iv_camera_timer"
+        app:layout_constraintEnd_toEndOf="@+id/iv_camera_timer"
+        app:layout_constraintStart_toStartOf="@+id/iv_camera_timer"
+        app:layout_constraintTop_toTopOf="@+id/iv_camera_timer"
+        app:layout_constraintVertical_bias="0.36" />
+
+    <TextView
+        android:id="@+id/tv_fps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_square_gray"
+        android:gravity="center"
+        android:rotation="-90"
+        android:text="30"
+        android:textColor="@color/black"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_title_fps"
+        app:layout_constraintEnd_toStartOf="@+id/iv_rotate_camera"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/tv_title_fps"
+        app:layout_constraintTop_toTopOf="@+id/tv_title_fps" />
+
+    <TextView
+        android:id="@+id/tv_title_fps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:rotation="-90"
+        android:text="fps"
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toTopOf="@+id/iv_camera_timer"
+        app:layout_constraintEnd_toEndOf="@+id/iv_camera_timer"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <!-- نوار exposure (به صورت یک SeekBar عمودی) -->
+    <SeekBar
+        android:id="@+id/exposure_slider"
+        android:layout_width="wrap_content"
+        android:layout_height="150dp"
+        android:rotation="-90"
+        android:layout_margin="16dp"
+        android:visibility="gone"
+        android:thumbTint="@color/white"
+        android:progressTint="@color/white"
+        android:max="4"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

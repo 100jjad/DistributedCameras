@@ -1,12 +1,14 @@
 package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
 import android.content.Context
+import android.graphics.Matrix
 import android.util.AttributeSet
 import android.view.TextureView
 
 class AutoFitTextureView : TextureView {
     private var mRatioWidth = 0
     private var mRatioHeight = 0
+    private val mMatrix = Matrix() // برای تنظیم موقعیت و اندازه تصویر
 
     constructor(context: Context) : this(context, null)
 
@@ -45,4 +47,40 @@ class AutoFitTextureView : TextureView {
             }
         }
     }
+/*
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // وقتی اندازه ویو تغییر کرد، موقعیت تصویر را تنظیم می‌کنیم
+        adjustAspectRatio(w, h)
+    }
+
+    private fun adjustAspectRatio(viewWidth: Int, viewHeight: Int) {
+        if (mRatioWidth == 0 || mRatioHeight == 0) {
+            return
+        }
+
+        val aspectRatio = mRatioWidth.toFloat() / mRatioHeight.toFloat()
+        val viewAspectRatio = viewWidth.toFloat() / viewHeight.toFloat()
+
+        val scale: Float
+        val dx: Float
+        val dy: Float
+
+        if (viewAspectRatio > aspectRatio) {
+            // تصویر در ارتفاع محدود می‌شود
+            scale = viewHeight.toFloat() / mRatioHeight.toFloat()
+            dx = (viewWidth - mRatioWidth * scale) / 2
+            dy = 0f
+        } else {
+            // تصویر در عرض محدود می‌شود
+            scale = viewWidth.toFloat() / mRatioWidth.toFloat()
+            dx = 0f
+            dy = (viewHeight - mRatioHeight * scale) / 2
+        }
+
+        // اعمال تغییرات روی Matrix
+        mMatrix.setScale(scale, scale)
+        mMatrix.postTranslate(dx, dy)
+        setTransform(mMatrix) // اعمال Matrix روی TextureView
+    }*/
 }

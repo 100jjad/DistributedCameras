@@ -26,11 +26,12 @@
 
 
             <!-- TextureView برای پیش‌نمایش دوربین -->
-            <com.example.testwirelesssynchronizationofmultipledistributedcameras.AutoFitTextureView2
+            <com.example.testwirelesssynchronizationofmultipledistributedcameras.Temp.AutoFitTextureView2
                 android:id="@+id/textureView"
                 android:layout_width="match_parent"
                 android:layout_height="500dp"
                 android:layout_marginTop="100dp" />
+
 
         </FrameLayout>
 

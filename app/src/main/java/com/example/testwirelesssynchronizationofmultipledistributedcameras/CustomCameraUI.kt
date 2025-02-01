@@ -1,14 +1,19 @@
 package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
 import android.app.Activity
+import android.graphics.Color
+import android.graphics.PorterDuff
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.Window
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 
 class CustomCameraUI : Activity() {
@@ -99,16 +104,47 @@ class CustomCameraUI : Activity() {
         frameRate = intent.getStringExtra("frame_rate")
         duration = intent.getStringExtra("duration")
 
-        // نمایش مقادیر با استفاده از Toast
-        Toast.makeText(this, "Flash Status: $flashStatus", Toast.LENGTH_SHORT).show()
-        Toast.makeText(this, "Frame Rate: $frameRate", Toast.LENGTH_SHORT).show()
-        Toast.makeText(this, "Duration: $duration", Toast.LENGTH_SHORT).show()
+        // پیدا کردن TextViewها
+        val tvFps: TextView = findViewById(R.id.tv_fps)
+        val tvTime: TextView = findViewById(R.id.tv_time)
+
+// مقداردهی به TextViewها
+        tvFps.text = frameRate
+        tvTime.text = duration
+
+        if (flashStatus=="روشن")
+        {
+            Handler(Looper.getMainLooper()).postDelayed({
+                camera2.setFlash(Camera2.FLASH.ON)
+                camera2.applyFlashChanges()
+                ivFlashAuto.setImageResource(R.drawable.flashon)
+                ivFlashAuto.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN) // اضافه کردن ColorFilter زرد وقتی فلاش روشن است
+            }, 500) // 500 میلی‌ثانیه تأخیر
 
 
-        // اضافه کردن اکشن کلیک برای هر ImageView
+        }
+
+
+/*
         ivFlashAuto.setOnClickListener {
-            // اکشن برای Flash Auto
-            Toast.makeText(this, "Flash Auto clicked", Toast.LENGTH_SHORT).show()
+            //فعال کردن فلاش دوربین در حالت پیش نمایش
+            camera2.setFlash(Camera2.FLASH.ON)
+            camera2.applyFlashChanges() // اعمال تغییرات
+            // فعال‌کردن فلاش ویدئو در حالت ضبط ویدئو به طور خود کار
+            //camera2.enableVideoFlash()
+        }*/
+
+        ivFlashAuto.setOnClickListener {
+            if (camera2.getFlash() == Camera2.FLASH.ON) {
+                camera2.setFlash(Camera2.FLASH.OFF)
+                ivFlashAuto.setImageResource(R.drawable.flashoff)
+                ivFlashAuto.clearColorFilter() // حذف ColorFilter وقتی فلاش خاموش است
+            } else {
+                camera2.setFlash(Camera2.FLASH.ON)
+                ivFlashAuto.setImageResource(R.drawable.flashon)
+                ivFlashAuto.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN) // اضافه کردن ColorFilter زرد وقتی فلاش روشن است
+            }
+            camera2.applyFlashChanges()
         }
 
         ivCaptureImage.setOnClickListener {
@@ -122,8 +158,7 @@ class CustomCameraUI : Activity() {
         }
 
         ivRotateCamera.setOnClickListener {
-            // اکشن برای دکمه چرخش دوربین
-            Toast.makeText(this, "Rotate Camera clicked", Toast.LENGTH_SHORT).show()
+            camera2.switchCamera()
         }
 
         // نمایش مقادیر در Log برای بررسی
