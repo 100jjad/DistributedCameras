@@ -205,14 +205,13 @@ class CustomCameraUI : Activity() {
         ivCaptureImage.setOnClickListener {
 
             Toast.makeText(this, "Video Recorde clicked", Toast.LENGTH_SHORT).show()
-/*
             // اکشن برای دکمه ضبط
             if (!isRecording) {
                 startRecording()
             } else {
                 stopRecording()
 
-            }*/
+            }
         }
 
         ivVideoSaved.setOnClickListener {
@@ -308,24 +307,9 @@ class CustomCameraUI : Activity() {
     }
 
     private fun startRecording() {
-/*        val videoDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        if (!videoDirectory.exists()) {
-            videoDirectory.mkdirs() // اگه پوشه وجود نداشت، ایجادش کن
-        }
-        val videoFile = File(videoDirectory, "DistributedCameras/video_${System.currentTimeMillis()}.mp4")
-
-// ساخت پوشه داخل Downloads اگه وجود نداشت
-        if (!videoFile.parentFile!!.exists()) {
-            videoFile.parentFile!!.mkdirs()
-        }
-        val outputFilePath = videoFile.absolutePath*/
-
         val outputFilePath = getVideoOutputPath(this@CustomCameraUI)
 
 // ادامه‌ی تنظیمات MediaRecorder یا سایر عملیات ذخیره‌سازی...
-
-
-
 
         camera2.prepareVideoRecordingSession(outputFilePath , exposureValue , frameRate?.toInt() ?: 30 , true)
         isRecording = true

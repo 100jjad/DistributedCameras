@@ -314,6 +314,24 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
 
     internal fun openCamera(width: Int, height: Int) {
+        val permissions = arrayOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+
+        val missingPermissions = permissions.filter {
+            ContextCompat.checkSelfPermission(textureView.context, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (!missingPermissions.isEmpty()) {
+
+            // درخواست مجوزهای لازم از کاربر
+            ActivityCompat.requestPermissions(activity, missingPermissions.toTypedArray(), REQUEST_CAMERA_PERMISSION)
+            Log.e("Camera2", "دسترسی‌های لازم وجود ندارد: ${missingPermissions.joinToString()}")
+        }
+
         if (ContextCompat.checkSelfPermission(
                 textureView.context,
                 Manifest.permission.CAMERA
