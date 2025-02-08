@@ -1,12 +1,15 @@
 package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
 import android.app.Activity
+import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -20,6 +23,7 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import java.io.File
 import androidx.core.content.ContextCompat
 import androidx.core.util.TypedValueCompat.dpToPx
 
@@ -41,6 +45,9 @@ class CustomCameraUI : Activity() {
     private lateinit var exposureSlider: SeekBar
     private var aeRange: Range<Int>? = null  // محدوده‌ی exposure compensation
 
+    private var isRecording = false
+    private var exposureValue :Int = 30
+
     companion object {
         private const val TAG = "CustomCameraUI"
     }
@@ -58,9 +65,11 @@ class CustomCameraUI : Activity() {
         // مقداردهی اولیه Camera2
         camera2 = Camera2(this, textureView)
 
-
+        // SharedPreferences برای ذخیره نقش
+        val sharedPreferences: SharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE)
+        val savedRole = sharedPreferences.getString("user_role", "slave")
         // فراخوانی تابع initialize برای دریافت و ذخیره مقادیر
-        initialize()
+        initialize(savedRole.toString())
 
     }
 
@@ -91,6 +100,7 @@ class CustomCameraUI : Activity() {
                 aeRange?.let {
                     val lower = it.lower
                     val newExposure = lower + progress
+                    exposureValue = newExposure
                     camera2.setExposureCompensation(newExposure)
                 }
             }
@@ -136,7 +146,7 @@ class CustomCameraUI : Activity() {
     }
 
 
-    private fun initialize() {
+    private fun initialize(Role : String) {
         // مقداردهی ImageView‌ها
         ivFlashAuto = findViewById(R.id.iv_camera_flash_auto)
         ivCaptureImage = findViewById(R.id.iv_capture_image)
@@ -170,7 +180,6 @@ class CustomCameraUI : Activity() {
 
         }
 
-
 /*
         ivFlashAuto.setOnClickListener {
             //فعال کردن فلاش دوربین در حالت پیش نمایش
@@ -194,8 +203,16 @@ class CustomCameraUI : Activity() {
         }
 
         ivCaptureImage.setOnClickListener {
+
+            Toast.makeText(this, "Video Recorde clicked", Toast.LENGTH_SHORT).show()
+/*
             // اکشن برای دکمه ضبط
-            Toast.makeText(this, "Capture Image clicked", Toast.LENGTH_SHORT).show()
+            if (!isRecording) {
+                startRecording()
+            } else {
+                stopRecording()
+
+            }*/
         }
 
         ivVideoSaved.setOnClickListener {
@@ -263,6 +280,15 @@ class CustomCameraUI : Activity() {
             }
             true
         }
+
+        if (Role == "slave")
+        {
+            ivCaptureImage.visibility = View.INVISIBLE
+        }
+        else
+        {
+            ivCaptureImage.visibility = View.VISIBLE
+        }
     }
 
 
@@ -280,4 +306,83 @@ class CustomCameraUI : Activity() {
             null
         }
     }
+
+    private fun startRecording() {
+/*        val videoDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        if (!videoDirectory.exists()) {
+            videoDirectory.mkdirs() // اگه پوشه وجود نداشت، ایجادش کن
+        }
+        val videoFile = File(videoDirectory, "DistributedCameras/video_${System.currentTimeMillis()}.mp4")
+
+// ساخت پوشه داخل Downloads اگه وجود نداشت
+        if (!videoFile.parentFile!!.exists()) {
+            videoFile.parentFile!!.mkdirs()
+        }
+        val outputFilePath = videoFile.absolutePath*/
+
+        val outputFilePath = getVideoOutputPath(this@CustomCameraUI)
+
+// ادامه‌ی تنظیمات MediaRecorder یا سایر عملیات ذخیره‌سازی...
+
+
+
+
+        camera2.prepareVideoRecordingSession(outputFilePath , exposureValue , frameRate?.toInt() ?: 30 , true)
+        isRecording = true
+        ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
+        Toast.makeText(this, "Recording started", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun stopRecording() {
+        camera2.stopRecordingVideo()
+        isRecording = false
+        ivCaptureImage.setImageResource(R.drawable.recordbutton)
+        Toast.makeText(this, "Recording stopped", Toast.LENGTH_SHORT).show()
+    }
+
+
+    fun getVideoOutputPath(context: Context): String {
+        val folderName = "DistributedCameras" // نام پوشه دلخواه شما
+        var videoDirectory: File? = null
+
+        // تلاش برای استفاده از پوشه DCIM
+        val dcimDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+        if (dcimDirectory.exists() || dcimDirectory.mkdirs()) {
+            val primaryDirectory = File(dcimDirectory, folderName)
+            if (primaryDirectory.exists() || primaryDirectory.mkdirs()) {
+                videoDirectory = primaryDirectory
+            } else {
+                Log.e("FolderCreation", "ساخت پوشه $folderName در DCIM با خطا مواجه شد.")
+            }
+        } else {
+            Log.e("FolderCreation", "دسترسی یا ساخت پوشه DCIM با خطا مواجه شد.")
+        }
+
+        // در صورت عدم موفقیت در ایجاد پوشه در DCIM، استفاده از مسیر پشتیبان در Android/data
+        if (videoDirectory == null) {
+            val fallbackDir = context.getExternalFilesDir(null)
+            if (fallbackDir != null && (fallbackDir.exists() || fallbackDir.mkdirs())) {
+                val fallbackDirectory = File(fallbackDir, folderName)
+                if (fallbackDirectory.exists() || fallbackDirectory.mkdirs()) {
+                    videoDirectory = fallbackDirectory
+                } else {
+                    Log.e("FolderCreation", "ساخت پوشه $folderName در مسیر پشتیبان با خطا مواجه شد.")
+                }
+            } else {
+                Log.e("FolderCreation", "دسترسی یا ساخت پوشه پشتیبان در Android/data با خطا مواجه شد.")
+            }
+        }
+
+        // اگر هنوز پوشه‌ای ایجاد نشده باشد، از پوشه fallbackDir (یا در نهایت filesDir) استفاده می‌کنیم
+        if (videoDirectory == null) {
+            Toast.makeText(this@CustomCameraUI , "اگر هنوز پوشه\u200Cای ایجاد نشده باشد، از پوشه fallbackDir (یا در نهایت filesDir) استفاده می\u200Cکنیم" , Toast.LENGTH_LONG).show()
+            videoDirectory = context.getExternalFilesDir(null) ?: context.filesDir
+        }
+
+        // ایجاد فایل ویدئو با نام یکتا
+        val videoFile = File(videoDirectory, "video_${System.currentTimeMillis()}.mp4")
+        return videoFile.absolutePath
+    }
+
+
 }

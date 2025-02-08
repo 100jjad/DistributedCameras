@@ -23,6 +23,9 @@ import androidx.core.content.ContextCompat
 import java.util.*
 import java.util.Collections.singletonList
 import kotlin.Comparator
+import android.media.MediaRecorder
+import java.io.File
+import java.util.Arrays
 
 
 class Camera2(private val activity: Activity, private val textureView: AutoFitTextureView) {
@@ -47,6 +50,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     private var cameraState = STATE_PREVIEW
 
     private var exposureCompensationRange: Range<Int>? = null
+    private var mediaRecorder: MediaRecorder? = null
+    private var isRecordingVideo: Boolean = false
 
 
     private var surface: Surface? = null
@@ -237,7 +242,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
     private val surfaceTextureListener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
-            Toast.makeText(activity , "width : $width , height : $height" , Toast.LENGTH_LONG).show()
+            //Toast.makeText(activity , "width : $width , height : $height" , Toast.LENGTH_LONG).show()
             configureTransform(width, height)
         }
 
@@ -959,4 +964,228 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
         }
     }
 
+
+/**
+     * تابع برای پیکربندی MediaRecorder
+     * پارامتر outputFile مسیر فایل خروجی ضبط شده است.
+     */
+
+    private fun setUpMediaRecorder(outputFile: String , framerate : Int) {
+        mediaRecorder = MediaRecorder()
+        mediaRecorder?.apply {
+            // تنظیم منابع صوتی و تصویری
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setVideoSource(MediaRecorder.VideoSource.SURFACE)
+
+            Log.d("Camera2", "Video will be saved at: $outputFile")
+
+            // تنظیم فرمت خروجی
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            try {
+                // **اینجا مسیر فایل خروجی را تنظیم کنید**
+                setOutputFile(outputFile)
+                Log.d("Camera2", "MediaRecorder setup successful")
+            } catch (e: Exception) {
+                Log.e("Camera2", "Error in MediaRecorder setup: ${e.message}")
+            }
+
+            // تنظیمات کدگذاری ویدئو – می‌توانید این مقادیر را تغییر دهید
+            setVideoEncodingBitRate(10000000)
+            setVideoFrameRate(framerate)
+            // اندازه ویدئو را بر اساس previewSize انتخاب می‌کنیم
+            previewSize?.let {
+                setVideoSize(it.width, it.height)
+            } ?: run {
+                // در صورت نبود اندازه مناسب، از یک مقدار پیش‌فرض استفاده کنید
+                setVideoSize(1920, 1080)
+            }
+            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+
+            // تنظیم جهت چرخش ویدئو بر اساس جهت سنسور
+            val rotation = activity.windowManager.defaultDisplay.rotation
+            val orientation = getOrientation(rotation)
+            setOrientationHint(orientation)
+
+            prepare()
+        }
+    }
+
+
+/**
+     * شروع ضبط ویدئو.
+     * پارامتر outputFile مسیر ذخیره فایل ضبط شده است.
+     *//*
+
+
+    fun startRecordingVideo(outputFile: String , currentExposureValue:Int , framerate : Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                Log.e("Camera2", "WRITE_EXTERNAL_STORAGE permission is not granted!")
+                return
+            }
+        }
+        if (cameraDevice == null || !textureView.isAvailable || previewSize == null) return
+
+        try {
+            // ابتدا MediaRecorder را پیکربندی می‌کنیم
+            setUpMediaRecorder(outputFile , framerate)
+
+            // تنظیم سطح (Surface) مربوط به preview و MediaRecorder
+            val texture = textureView.surfaceTexture
+            texture?.setDefaultBufferSize(previewSize!!.width, previewSize!!.height)
+            val previewSurface = Surface(texture)
+            val recorderSurface = mediaRecorder!!.surface
+
+            if (recorderSurface == null) {
+                Log.e("Camera2", "Recorder Surface is NULL!")
+                return
+            }
+
+            // ایجاد یک CaptureRequest جدید برای حالت ضبط (TEMPLATE_RECORD)
+            captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
+            captureRequestBuilder?.apply {
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, currentExposureValue)
+            }
+            captureRequestBuilder!!.addTarget(previewSurface)
+            captureRequestBuilder!!.addTarget(recorderSurface)
+
+
+            // بستن session قبلی (در صورت نیاز) و ایجاد session جدید شامل دو سطح
+            cameraDevice!!.createCaptureSession(
+                Arrays.asList(previewSurface, recorderSurface),
+                object : CameraCaptureSession.StateCallback() {
+                    override fun onConfigured(session: CameraCaptureSession) {
+                        cameraCaptureSession = session
+                        try {
+                            captureRequest = captureRequestBuilder!!.build()
+                            // آغاز ارسال درخواست‌های تکراری به دوربین
+                            cameraCaptureSession!!.setRepeatingRequest(captureRequest!!, null, backgroundHandler)
+                            // شروع ضبط توسط MediaRecorder
+                            mediaRecorder?.start()
+                            isRecordingVideo = true
+                        } catch (e: CameraAccessException) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    override fun onConfigureFailed(session: CameraCaptureSession) {
+                        // در صورت شکست، می‌توانید خطایی نمایش دهید یا session قبلی را بازیابی کنید.
+                    }
+                },
+                backgroundHandler
+            )
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
+*/
+
+
+    /**
+     * پیش‌پیکربندی session ضبط ویدئو با استفاده از یک capture session مشترک برای پیش‌نمایش و ضبط.
+     * این متد باید قبل از شروع ضبط (و بعد از آنکه کاربر آماده ضبط شود) فراخوانی شود.
+     */
+    fun prepareVideoRecordingSession(outputFile: String, currentExposureValue: Int, framerate: Int , autostart : Boolean = false) {
+        if (cameraDevice == null || !textureView.isAvailable || previewSize == null) return
+
+        // پیکربندی MediaRecorder
+        setUpMediaRecorder(outputFile, framerate)
+
+        // تنظیم اندازه بافر سطح TextureView
+        val texture = textureView.surfaceTexture
+        texture?.setDefaultBufferSize(previewSize!!.width, previewSize!!.height)
+        val previewSurface = Surface(texture)
+        val recorderSurface = mediaRecorder!!.surface
+
+        // ایجاد CaptureRequest برای حالت ضبط (TEMPLATE_RECORD)
+        captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
+            // تنظیم AE و مقدار جبران نور
+            set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+            set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, currentExposureValue)
+            // افزودن هر دو سطح
+            addTarget(previewSurface)
+            addTarget(recorderSurface)
+        }
+
+        // ایجاد یک capture session مشترک شامل هر دو سطح
+        cameraDevice!!.createCaptureSession(
+            listOf(previewSurface, recorderSurface),
+            object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    cameraCaptureSession = session
+                    captureRequest = captureRequestBuilder!!.build()
+                    // شروع به ارسال درخواست‌های تکراری
+                    cameraCaptureSession!!.setRepeatingRequest(captureRequest!!, cameraCaptureCallBack, backgroundHandler)
+                    Log.d("Camera2", "Shared capture session for preview and recording configured")
+                }
+
+                override fun onConfigureFailed(session: CameraCaptureSession) {
+                    Log.e("Camera2", "Configuration failed when preparing video session")
+                }
+            },
+            backgroundHandler
+        )
+
+        if (autostart)
+            startRecordingVideo()
+    }
+
+    /**
+     * شروع ضبط ویدئو با استفاده از session از پیش پیکربندی‌شده.
+     * در اینجا نیازی به ایجاد session جدید نیست؛ فقط ضبط توسط MediaRecorder آغاز می‌شود.
+     */
+    fun startRecordingVideo() {
+        try {
+            // شروع ضبط به صورت فوری
+            mediaRecorder?.start()
+            isRecordingVideo = true
+            Log.d("Camera2", "Video recording started with zero reconfiguration delay")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Log.e("Camera2", "Error while starting video recording: ${e.message}")
+        }
+    }
+
+
+
+    /**
+     * توقف ضبط ویدئو.
+     * پس از توقف، یک session جدید preview ایجاد می‌شود.
+     */
+    fun stopRecordingVideo() {
+        if (!isRecordingVideo) {
+            Log.e("Camera2", "MediaRecorder stop called while not recording!")
+            return
+        }
+        else{
+            try {
+                isRecordingVideo = false
+                // توقف ضبط
+                mediaRecorder?.apply {
+                    try {
+                        stop()
+                        reset()
+                        release()
+                    } catch (e: Exception) {
+                        // در صورت خطا (مثلاً اگر ضبط به درستی آغاز نشده باشد)
+                        e.printStackTrace()
+                        Log.e("Camera2", "MediaRecorder stop called while not recording! : ${e.message}")
+                    }
+                }
+                mediaRecorder = null
+
+                // بازگرداندن preview
+                createPreviewSession()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+    }
 }

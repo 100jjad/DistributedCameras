@@ -1,13 +1,10 @@
 package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
 import android.util.Log
-import com.example.testwirelesssynchronizationofmultipledistributedcameras.MasterStatusActivity.Companion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -22,7 +19,7 @@ import java.util.LinkedList
 import java.util.Queue
 import java.util.concurrent.ConcurrentHashMap
 
-object NetworkManager {
+object MasterNetworkManager {
 
 
     private var fpsUpdateListener: FpsUpdateListener? = null

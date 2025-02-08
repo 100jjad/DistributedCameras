@@ -19,6 +19,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.TestWirelessSynchronizationOfMultipleDistributedCameras"
         tools:targetApi="31">
 
@@ -33,9 +34,11 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".MasterStatusActivity" />
+        <activity android:name=".Temp.MasterStatusActivity" />
         <activity android:name=".MasterActivity" />
         <activity android:name=".SlaveStatusActivity"
+            android:exported="true"/>
+        <activity android:name=".SlaveActivity"
             android:exported="true"/>
         <activity android:name=".Temp.CameraActivity" />
 

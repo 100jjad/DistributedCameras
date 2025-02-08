@@ -73,7 +73,7 @@
             <TextView
                 android:id="@+id/tvMasterName"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:text="---"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -128,7 +128,6 @@
                 android:id="@+id/tvFlashStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="---"
                 android:textSize="16sp" />
         </LinearLayout>
 
@@ -150,7 +149,6 @@
                 android:id="@+id/tvFrameRate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="---"
                 android:textSize="16sp" />
         </LinearLayout>
 
@@ -172,7 +170,6 @@
                 android:id="@+id/tvDuration"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="---"
                 android:textSize="16sp" />
         </LinearLayout>
 

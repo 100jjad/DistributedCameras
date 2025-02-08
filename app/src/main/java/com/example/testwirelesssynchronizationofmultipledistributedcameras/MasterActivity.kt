@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class MasterActivity : AppCompatActivity(), NetworkManager.FpsUpdateListener  {
+class MasterActivity : AppCompatActivity(), MasterNetworkManager.FpsUpdateListener  {
 
 
 
@@ -61,7 +61,7 @@ class MasterActivity : AppCompatActivity(), NetworkManager.FpsUpdateListener  {
         spinnerFrameRate.adapter = spinnerAdapter
 
         // استفاده از instance موجود NetworkManager و تنظیم listener
-        NetworkManager.setFpsUpdateListener(this)
+        MasterNetworkManager.setFpsUpdateListener(this)
 
         // مقداردهی FPS
         initializeMasterFps()
@@ -69,9 +69,9 @@ class MasterActivity : AppCompatActivity(), NetworkManager.FpsUpdateListener  {
         // به‌روزرسانی زمان محلی
         updateLocalTimePeriodically()
 
-        NetworkManager.broadcastMasterIp(7463 , NetworkManager.getLocalIpAddress())
+        MasterNetworkManager.broadcastMasterIp(7463 , MasterNetworkManager.getLocalIpAddress())
         // راه‌اندازی سرور با استفاده از NetworkManager
-        NetworkManager.startServer(
+        MasterNetworkManager.startServer(
             port = 12345,
             onClientConnected = { clientAddress ->
                 // کدی که هنگام اتصال کلاینت جدید اجرا می‌شود
@@ -96,7 +96,7 @@ class MasterActivity : AppCompatActivity(), NetworkManager.FpsUpdateListener  {
 
             // ارسال تنظیمات به تمام اسلیوها
             val jsonSettings = Json.encodeToString(settings)
-            NetworkManager.sendMessageToAllClients("Camera_Setting:$jsonSettings")
+            MasterNetworkManager.sendMessageToAllClients("Camera_Setting:$jsonSettings")
         }
 
         // شروع ضبط ویدیو
@@ -107,7 +107,7 @@ class MasterActivity : AppCompatActivity(), NetworkManager.FpsUpdateListener  {
 
     private fun startVideoRecording() {
         // ارسال پیام به همه اسلیوها
-        NetworkManager.sendMessageToAllClients("READY_FOR_RECORDING")
+        MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING")
 
         val flashEnabled = switchFlash.isChecked
         val frameRate = spinnerFrameRate.selectedItem.toString().toIntOrNull() ?: 30
@@ -192,7 +192,7 @@ class MasterActivity : AppCompatActivity(), NetworkManager.FpsUpdateListener  {
     override fun onDestroy() {
         super.onDestroy()
         // توقف سرور هنگام تخریب Activity
-        NetworkManager.stopServer()
+        MasterNetworkManager.stopServer()
     }
 
     override fun onFpsListUpdated(fpsList: List<Int>) {

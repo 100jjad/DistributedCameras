@@ -68,7 +68,6 @@ class MainActivity : AppCompatActivity() {
         val editor = sharedPreferences.edit()
         editor.putString("user_role", role)
         editor.apply()
-        Toast.makeText(this, "$role ذخیره شد", Toast.LENGTH_SHORT).show()
     }
 
 
@@ -76,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         val intent = if (role == "master") {
             Intent(this, MasterActivity::class.java)
         } else {
-            Intent(this, SlaveStatusActivity::class.java)
+            Intent(this, SlaveActivity::class.java)
         }
         startActivity(intent)
         finish()

@@ -1,4 +1,4 @@
-package com.example.testwirelesssynchronizationofmultipledistributedcameras
+package com.example.testwirelesssynchronizationofmultipledistributedcameras.Temp
 
 import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
@@ -8,7 +8,9 @@ import android.util.Log
 import android.util.Range
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.example.testwirelesssynchronizationofmultipledistributedcameras.CustomCameraUI
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.CameraSettings
+import com.example.testwirelesssynchronizationofmultipledistributedcameras.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
