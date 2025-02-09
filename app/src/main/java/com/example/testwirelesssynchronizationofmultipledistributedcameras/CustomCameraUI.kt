@@ -26,8 +26,9 @@ import android.widget.Toast
 import java.io.File
 import androidx.core.content.ContextCompat
 import androidx.core.util.TypedValueCompat.dpToPx
+import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.CameraSettings
 
-class CustomCameraUI : Activity() {
+class CustomCameraUI : Activity() , SlaveNetworkListener {
     private lateinit var textureView: AutoFitTextureView
     private lateinit var camera2: Camera2
 
@@ -48,6 +49,8 @@ class CustomCameraUI : Activity() {
     private var isRecording = false
     private var exposureValue :Int = 30
 
+    var savedRole : String = ""
+
     companion object {
         private const val TAG = "CustomCameraUI"
     }
@@ -59,6 +62,8 @@ class CustomCameraUI : Activity() {
 
         setContentView(R.layout.activity_custom_camera_ui)
 
+
+
         // مقداردهی اولیه برای TextureView
         textureView = findViewById(R.id.camera_view)
 
@@ -67,14 +72,28 @@ class CustomCameraUI : Activity() {
 
         // SharedPreferences برای ذخیره نقش
         val sharedPreferences: SharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE)
-        val savedRole = sharedPreferences.getString("user_role", "slave")
+        savedRole = sharedPreferences.getString("user_role", "slave").toString()
         // فراخوانی تابع initialize برای دریافت و ذخیره مقادیر
-        initialize(savedRole.toString())
+
+        if (savedRole == "slave")
+        {
+            // تنظیم listener برای دریافت رویدادهای شبکه
+            SlaveNetworkManager.setListener(this)
+        }
+
+        initialize(savedRole)
 
     }
 
     override fun onResume() {
         super.onResume()
+
+        if (savedRole == "slave")
+        {
+            // تنظیم listener برای دریافت رویدادهای شبکه
+            SlaveNetworkManager.setListener(this)
+        }
+
         camera2.onResume() // مدیریت باز کردن دوربین و شروع Thread
 
 
@@ -116,6 +135,12 @@ class CustomCameraUI : Activity() {
     override fun onPause() {
         super.onPause()
         camera2.close() // بستن دوربین و Thread در هنگام توقف Activity
+
+        if (savedRole == "slave")
+        {
+            // تنظیم listener برای دریافت رویدادهای شبکه
+            SlaveNetworkManager.removeListener(this)
+        }
     }
 
     private fun makeNavigationBarTransparent() {
@@ -205,6 +230,7 @@ class CustomCameraUI : Activity() {
         ivCaptureImage.setOnClickListener {
 
             Toast.makeText(this, "Video Recorde clicked", Toast.LENGTH_SHORT).show()
+            MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING_STATUS_2")
             // اکشن برای دکمه ضبط
             if (!isRecording) {
                 startRecording()
@@ -311,7 +337,7 @@ class CustomCameraUI : Activity() {
 
 // ادامه‌ی تنظیمات MediaRecorder یا سایر عملیات ذخیره‌سازی...
 
-        camera2.prepareVideoRecordingSession(outputFilePath , exposureValue , frameRate?.toInt() ?: 30 , true)
+        camera2.prepareVideoRecordingSession(this@CustomCameraUI , outputFilePath , exposureValue , frameRate?.toInt() ?: 30 , true)
         isRecording = true
         ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
         Toast.makeText(this, "Recording started", Toast.LENGTH_SHORT).show()
@@ -366,6 +392,43 @@ class CustomCameraUI : Activity() {
         // ایجاد فایل ویدئو با نام یکتا
         val videoFile = File(videoDirectory, "video_${System.currentTimeMillis()}.mp4")
         return videoFile.absolutePath
+    }
+
+    override fun onMasterIpReceived(masterIp: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onConnectionStatusChanged(status: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onCameraSettingsReceived(settings: CameraSettings) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onTimeSyncUpdated(delay: Long, offset: Long) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onReadyForRecording(message : String) {
+        if(message=="READY_FOR_RECORDING_STATUS_2")
+        {
+            runOnUiThread {
+                Toast.makeText(this@CustomCameraUI, "Video Recorde clicked", Toast.LENGTH_SHORT).show()
+
+                // اکشن برای دکمه ضبط
+                if (!isRecording) {
+                    startRecording()
+                } else {
+                    stopRecording()
+
+                }
+            }
+        }
+    }
+
+    override fun onError(errorMessage: String) {
+        TODO("Not yet implemented")
     }
 
 

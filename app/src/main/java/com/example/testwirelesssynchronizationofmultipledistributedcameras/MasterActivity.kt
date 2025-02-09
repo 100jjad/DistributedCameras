@@ -107,7 +107,7 @@ class MasterActivity : AppCompatActivity(), MasterNetworkManager.FpsUpdateListen
 
     private fun startVideoRecording() {
         // ارسال پیام به همه اسلیوها
-        MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING")
+        MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING_STATUS_1")
 
         val flashEnabled = switchFlash.isChecked
         val frameRate = spinnerFrameRate.selectedItem.toString().toIntOrNull() ?: 30

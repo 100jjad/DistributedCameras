@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.lang.ref.WeakReference
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -35,6 +36,21 @@ object SlaveNetworkManager {
 
     // listener جهت اطلاع‌رسانی رویدادهای شبکه به UI
     var listener: SlaveNetworkListener? = null
+        private set
+
+    // متد برای ثبت listener جدید (و در صورت نیاز حذف listener قبلی)
+    fun setListener(newListener: SlaveNetworkListener) {
+        listener = newListener
+    }
+
+    // متد برای حذف listener (مثلاً هنگام onDestroy اکتیویتی)
+    fun removeListener(listenerToRemove: SlaveNetworkListener) {
+        if (listener === listenerToRemove) {
+            listener = null
+        }
+    }
+
+
 
     /**
      * شروع به گوش دادن برای دریافت IP مستر (با استفاده از Broadcast)
@@ -162,7 +178,7 @@ object SlaveNetworkManager {
                 processTimeResponse(message)
             }
             message.startsWith("READY_FOR_RECORDING") -> {
-                listener?.onReadyForRecording()
+                listener?.onReadyForRecording(message)
             }
             else -> {
                 listener?.onError("پیام ناشناخته دریافت شد: $message")
@@ -237,4 +253,6 @@ object SlaveNetworkManager {
             // در صورت بروز خطا می‌توان لاگ کرد
         }
     }
+
+
 }

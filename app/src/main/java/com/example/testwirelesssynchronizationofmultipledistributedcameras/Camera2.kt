@@ -2,6 +2,7 @@ package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
 import android.Manifest
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -24,6 +25,8 @@ import java.util.*
 import java.util.Collections.singletonList
 import kotlin.Comparator
 import android.media.MediaRecorder
+import android.os.Environment
+import android.provider.MediaStore
 import java.io.File
 import java.util.Arrays
 
@@ -314,16 +317,17 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
 
     internal fun openCamera(width: Int, height: Int) {
-        val permissions = arrayOf(
+/*        val permissions = arrayOf(
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
+        */
 
-        val missingPermissions = permissions.filter {
-            ContextCompat.checkSelfPermission(textureView.context, it) != PackageManager.PERMISSION_GRANTED
-        }
+
+        val missingPermissions = getMissingPermissions()
+
 
         if (!missingPermissions.isEmpty()) {
 
@@ -348,6 +352,28 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         } else {
             ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
             Log.e("Camera2", "دسترسی وجود ندارد")
+        }
+    }
+
+    fun getMissingPermissions(): List<String> {
+        // تعریف آرایه مجوزها بر اساس نسخه سیستم عامل
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+        }
+        // بررسی مجوزهایی که هنوز داده نشده‌اند
+        return permissions.filter {
+            ContextCompat.checkSelfPermission(textureView.context, it) != PackageManager.PERMISSION_GRANTED
         }
     }
 
@@ -988,7 +1014,7 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
      * پارامتر outputFile مسیر فایل خروجی ضبط شده است.
      */
 
-    private fun setUpMediaRecorder(outputFile: String , framerate : Int) {
+    private fun setUpMediaRecorder(context: Context , outputFile: String , framerate : Int) {
         mediaRecorder = MediaRecorder()
         mediaRecorder?.apply {
             // تنظیم منابع صوتی و تصویری
@@ -999,12 +1025,40 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
 
             // تنظیم فرمت خروجی
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            try {
-                // **اینجا مسیر فایل خروجی را تنظیم کنید**
-                setOutputFile(outputFile)
-                Log.d("Camera2", "MediaRecorder setup successful")
-            } catch (e: Exception) {
-                Log.e("Camera2", "Error in MediaRecorder setup: ${e.message}")
+
+
+
+            // در اندروید 13 و بالاتر، از MediaStore استفاده کنید
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val values = ContentValues().apply {
+                    // نام فایل خروجی به صورت منحصر به فرد
+                    put(MediaStore.Video.Media.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
+                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                    // ذخیره در پوشه عمومی Movies (یا Videos)
+                    put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/YourAppName")
+                }
+                val resolver = context.contentResolver
+                val videoUri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+                if (videoUri != null) {
+                    val fd = resolver.openFileDescriptor(videoUri, "w")?.fileDescriptor
+                    if (fd != null) {
+                        setOutputFile(fd)
+                    } else {
+                        Log.e("Camera2", "Failed to obtain FileDescriptor for videoUri")
+                    }
+                } else {
+                    Log.e("Camera2", "Failed to insert video into MediaStore")
+                }
+            }
+            else {
+                // برای نسخه‌های پایین‌تر از اندروید 13، مسیر فایل خروجی مستقیم مورد استفاده قرار می‌گیرد
+                try {
+                    // **اینجا مسیر فایل خروجی را تنظیم کنید**
+                    setOutputFile(outputFile)
+                    Log.d("Camera2", "MediaRecorder setup successful")
+                } catch (e: Exception) {
+                    Log.e("Camera2", "Error in MediaRecorder setup: ${e.message}")
+                }
             }
 
             // تنظیمات کدگذاری ویدئو – می‌توانید این مقادیر را تغییر دهید
@@ -1099,8 +1153,6 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
             e.printStackTrace()
         }
     }
-
-
 */
 
 
@@ -1108,11 +1160,11 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
      * پیش‌پیکربندی session ضبط ویدئو با استفاده از یک capture session مشترک برای پیش‌نمایش و ضبط.
      * این متد باید قبل از شروع ضبط (و بعد از آنکه کاربر آماده ضبط شود) فراخوانی شود.
      */
-    fun prepareVideoRecordingSession(outputFile: String, currentExposureValue: Int, framerate: Int , autostart : Boolean = false) {
+    fun prepareVideoRecordingSession(context: Context , outputFile: String, currentExposureValue: Int, framerate: Int , autostart : Boolean = false) {
         if (cameraDevice == null || !textureView.isAvailable || previewSize == null) return
 
         // پیکربندی MediaRecorder
-        setUpMediaRecorder(outputFile, framerate)
+        setUpMediaRecorder(context , outputFile, framerate)
 
         // تنظیم اندازه بافر سطح TextureView
         val texture = textureView.surfaceTexture

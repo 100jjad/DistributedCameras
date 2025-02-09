@@ -7,6 +7,6 @@ interface SlaveNetworkListener {
     fun onConnectionStatusChanged(status: String)
     fun onCameraSettingsReceived(settings: CameraSettings)
     fun onTimeSyncUpdated(delay: Long, offset: Long)
-    fun onReadyForRecording()
+    fun onReadyForRecording(message : String)
     fun onError(errorMessage: String)
 }

@@ -48,7 +48,7 @@ class SlaveActivity : AppCompatActivity(), SlaveNetworkListener {
         }
 
         // تنظیم listener برای دریافت رویدادهای شبکه
-        SlaveNetworkManager.listener = this
+        SlaveNetworkManager.setListener(this)
 
         // شروع به گوش دادن برای دریافت IP مستر
         SlaveNetworkManager.listenForMasterIp(7463)
@@ -99,9 +99,12 @@ class SlaveActivity : AppCompatActivity(), SlaveNetworkListener {
     /**
      * فراخوانی انتقال تنظیمات جهت ضبط ویدئو پس از اعلام مستر
      */
-    override fun onReadyForRecording() {
-        runOnUiThread {
-            transferCameraSettings()
+    override fun onReadyForRecording(message : String) {
+        if (message == "READY_FOR_RECORDING_STATUS_1")
+        {
+            runOnUiThread {
+                transferCameraSettings()
+            }
         }
     }
 
@@ -188,5 +191,16 @@ class SlaveActivity : AppCompatActivity(), SlaveNetworkListener {
         super.onDestroy()
         // بستن اتصال شبکه
         SlaveNetworkManager.closeConnection()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        SlaveNetworkManager.removeListener(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // تنظیم listener برای دریافت رویدادهای شبکه
+        SlaveNetworkManager.setListener(this)
     }
 }
