@@ -156,19 +156,98 @@
         app:layout_constraintTop_toTopOf="parent" />
 
 
-    <!-- نوار exposure (به صورت یک SeekBar عمودی) -->
-    <SeekBar
-        android:id="@+id/exposure_slider"
-        android:layout_width="150dp"
-        android:layout_height="30dp"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/control_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:rotation="-90"
-        android:layout_margin="16dp"
         android:visibility="gone"
-        android:thumb="@drawable/expo"
-        android:thumbTint="@color/white"
-        android:progressTint="@color/white"
-        android:max="4"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- ردیف اول: Exposure -->
+        <SeekBar
+            android:id="@+id/exposure_slider"
+            android:layout_width="150dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="64dp"
+            android:max="4"
+            android:progressTint="@color/white"
+            android:thumb="@drawable/expo"
+            android:thumbTint="@color/white"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_exposure"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="EXP"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/exposure_slider"
+            app:layout_constraintEnd_toStartOf="@+id/exposure_slider"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/exposure_slider" />
+
+        <!-- ردیف دوم: ISO -->
+        <SeekBar
+            android:id="@+id/iso_slider"
+            android:layout_width="150dp"
+            android:layout_height="30dp"
+            android:max="4"
+            android:progressTint="@color/white"
+            android:thumb="@drawable/expo"
+            android:thumbTint="@color/white"
+            app:layout_constraintEnd_toEndOf="@id/exposure_slider"
+            app:layout_constraintStart_toStartOf="@id/exposure_slider"
+            app:layout_constraintTop_toBottomOf="@id/exposure_slider" />
+
+        <TextView
+            android:id="@+id/tv_iso"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ISO"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/iso_slider"
+            app:layout_constraintEnd_toStartOf="@+id/iso_slider"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/exposure_slider" />
+
+        <!-- ردیف سوم: Focus -->
+        <SeekBar
+            android:id="@+id/focus_slider"
+            android:layout_width="150dp"
+            android:layout_height="30dp"
+            android:max="4"
+            android:progressTint="@color/white"
+            android:thumb="@drawable/expo"
+            android:thumbTint="@color/white"
+            app:layout_constraintEnd_toEndOf="@id/iso_slider"
+            app:layout_constraintStart_toStartOf="@id/iso_slider"
+            app:layout_constraintTop_toBottomOf="@id/iso_slider" />
+
+        <TextView
+            android:id="@+id/tv_focus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FOC"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/focus_slider"
+            app:layout_constraintEnd_toStartOf="@+id/focus_slider"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/iso_slider" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

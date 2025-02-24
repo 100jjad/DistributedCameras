@@ -52,13 +52,16 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     private var flash = FLASH.OFF
     private var cameraState = STATE_PREVIEW
 
-    private var exposureCompensationRange: Range<Int>? = null
+    private var exposureCompensationRange: Range<Long>? = null
+    private var isoRange: Range<Int>? = null
+    private var focusRange : Range<Float>? = null
     private var mediaRecorder: MediaRecorder? = null
     private var isRecordingVideo: Boolean = false
 
 
     private var surface: Surface? = null
-
+    private var sensorArraySize: Rect? = null
+    private var maxDigitalZoom: Float = 1f
 
     /**
      * Whether the current camera device supports Flash or not.
@@ -395,7 +398,15 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
                     val streamConfigurationMap = cameraCharacteristics.get(
                         CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
                     )
-                    exposureCompensationRange = cameraCharacteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE)
+                    exposureCompensationRange = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+                    isoRange = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
+                    val minFocusDistance = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) ?: 0f
+                    focusRange = Range(0f, minFocusDistance)
+
+                    // مقداردهی به active array و max digital zoom
+                    sensorArraySize = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+                    maxDigitalZoom = cameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f
+
 
 // For still image captures, we use the largest available size.
                     val largest = Collections.max(
@@ -557,7 +568,10 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 // We set up a CaptureRequest.Builder with the output Surface.
 
             captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+            // غیرفعال کردن نوردهی خودکار:
+            captureRequestBuilder!!.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
             captureRequestBuilder!!.addTarget(previewSurface!!)
+            /*captureRequestBuilder!!.addTarget(previewSurface!!)*/
 
 
 // Here, we create a CameraCaptureSession for camera preview.
@@ -988,15 +1002,39 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
     }
 
 
+/*
     // متد تنظیم exposure compensation:
     fun setExposureCompensation(value: Int) {
         // توجه داشته باشید که در حالت preview ممکن است builder موجود باشد
         captureRequestBuilder?.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, value)
         cameraCaptureSession?.setRepeatingRequest(captureRequestBuilder!!.build(), cameraCaptureCallBack, backgroundHandler)
     }
+*/
 
+    fun setExposureTime(exposureTime: Long) {
+        // مطمئن شوید که exposureTime در بازه مجاز قرار دارد
+        captureRequestBuilder?.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime)
+        cameraCaptureSession?.setRepeatingRequest(captureRequestBuilder!!.build(), cameraCaptureCallBack, backgroundHandler)
+    }
 
     fun autoOptimizeExposure() {
+        captureRequestBuilder?.let { builder ->
+            // استفاده از بازه مجاز زمان نوردهی که در exposureCompensationRange ذخیره شده
+            exposureCompensationRange?.let { range ->
+                val minExposure = range.lower
+                val maxExposure = range.upper
+                // محاسبه مقدار میانی (Median)؛ می‌توانید الگوریتم پیشرفته‌تری هم اعمال کنید
+                val optimalExposure = (minExposure + maxExposure) / 2
+                // تنظیم دستی زمان نوردهی (این مقدار به نانوثانیه است)
+                builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, optimalExposure)
+                // به‌روزرسانی درخواست تکراری
+                cameraCaptureSession?.setRepeatingRequest(builder.build(), cameraCaptureCallBack, backgroundHandler)
+            }
+        }
+    }
+
+
+/*    fun autoOptimizeExposure() {
         // اگر captureRequestBuilder آماده است
         captureRequestBuilder?.let { builder ->
             // تنظیم حالت AE به خودکار (با flash در صورت نیاز)
@@ -1006,10 +1044,37 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
             // به‌روزرسانی درخواست تکراری
             cameraCaptureSession?.setRepeatingRequest(builder.build(), cameraCaptureCallBack, backgroundHandler)
         }
+    }*/
+
+    fun setISO(value: Int) {
+        // غیرفعال کردن نوردهی خودکار برای کنترل دستی ISO
+        captureRequestBuilder?.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
+        // تنظیم دستی ISO
+        captureRequestBuilder?.set(CaptureRequest.SENSOR_SENSITIVITY, value)
+        cameraCaptureSession?.setRepeatingRequest(captureRequestBuilder!!.build(), cameraCaptureCallBack, backgroundHandler)
+    }
+
+    fun autoOptimizeISO() {
+        val defaultISO = 100 // مقدار پیش‌فرض؛ در صورت نیاز می‌توانید این مقدار را تغییر دهید
+        setISO(defaultISO)
+    }
+
+    fun setManualFocus(focusDistance: Float) {
+        // غیرفعال کردن فوکوس خودکار
+        captureRequestBuilder?.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+        // تنظیم دستی فاصله فوکوس
+        captureRequestBuilder?.set(CaptureRequest.LENS_FOCUS_DISTANCE, focusDistance)
+        cameraCaptureSession?.setRepeatingRequest(captureRequestBuilder!!.build(), cameraCaptureCallBack, backgroundHandler)
+    }
+
+    fun autoOptimizeFocus() {
+        // تنظیم فوکوس به حالت بی‌نهایت (معمولاً مقدار 0 در Camera2 API نشان‌دهنده فوکوس بی‌نهایت است)
+        setManualFocus(0f)
     }
 
 
-/**
+
+    /**
      * تابع برای پیکربندی MediaRecorder
      * پارامتر outputFile مسیر فایل خروجی ضبط شده است.
      */
@@ -1084,83 +1149,11 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
     }
 
 
-/**
-     * شروع ضبط ویدئو.
-     * پارامتر outputFile مسیر ذخیره فایل ضبط شده است.
-     *//*
-
-
-    fun startRecordingVideo(outputFile: String , currentExposureValue:Int , framerate : Int) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                Log.e("Camera2", "WRITE_EXTERNAL_STORAGE permission is not granted!")
-                return
-            }
-        }
-        if (cameraDevice == null || !textureView.isAvailable || previewSize == null) return
-
-        try {
-            // ابتدا MediaRecorder را پیکربندی می‌کنیم
-            setUpMediaRecorder(outputFile , framerate)
-
-            // تنظیم سطح (Surface) مربوط به preview و MediaRecorder
-            val texture = textureView.surfaceTexture
-            texture?.setDefaultBufferSize(previewSize!!.width, previewSize!!.height)
-            val previewSurface = Surface(texture)
-            val recorderSurface = mediaRecorder!!.surface
-
-            if (recorderSurface == null) {
-                Log.e("Camera2", "Recorder Surface is NULL!")
-                return
-            }
-
-            // ایجاد یک CaptureRequest جدید برای حالت ضبط (TEMPLATE_RECORD)
-            captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
-            captureRequestBuilder?.apply {
-                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-                set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, currentExposureValue)
-            }
-            captureRequestBuilder!!.addTarget(previewSurface)
-            captureRequestBuilder!!.addTarget(recorderSurface)
-
-
-            // بستن session قبلی (در صورت نیاز) و ایجاد session جدید شامل دو سطح
-            cameraDevice!!.createCaptureSession(
-                Arrays.asList(previewSurface, recorderSurface),
-                object : CameraCaptureSession.StateCallback() {
-                    override fun onConfigured(session: CameraCaptureSession) {
-                        cameraCaptureSession = session
-                        try {
-                            captureRequest = captureRequestBuilder!!.build()
-                            // آغاز ارسال درخواست‌های تکراری به دوربین
-                            cameraCaptureSession!!.setRepeatingRequest(captureRequest!!, null, backgroundHandler)
-                            // شروع ضبط توسط MediaRecorder
-                            mediaRecorder?.start()
-                            isRecordingVideo = true
-                        } catch (e: CameraAccessException) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    override fun onConfigureFailed(session: CameraCaptureSession) {
-                        // در صورت شکست، می‌توانید خطایی نمایش دهید یا session قبلی را بازیابی کنید.
-                    }
-                },
-                backgroundHandler
-            )
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-*/
-
-
     /**
      * پیش‌پیکربندی session ضبط ویدئو با استفاده از یک capture session مشترک برای پیش‌نمایش و ضبط.
      * این متد باید قبل از شروع ضبط (و بعد از آنکه کاربر آماده ضبط شود) فراخوانی شود.
      */
-    fun prepareVideoRecordingSession(context: Context , outputFile: String, currentExposureValue: Int, framerate: Int , autostart : Boolean = false) {
+    fun prepareVideoRecordingSession(context: Context , outputFile: String, currentExposureValue: Long, framerate: Int , autostart : Boolean = false) {
         if (cameraDevice == null || !textureView.isAvailable || previewSize == null) return
 
         // پیکربندی MediaRecorder
@@ -1176,7 +1169,8 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
         captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
             // تنظیم AE و مقدار جبران نور
             set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-            set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, currentExposureValue)
+//            set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, currentExposureValue)
+            captureRequestBuilder?.set(CaptureRequest.SENSOR_EXPOSURE_TIME, currentExposureValue)
             // افزودن هر دو سطح
             addTarget(previewSurface)
             addTarget(recorderSurface)
@@ -1257,5 +1251,34 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
             }
         }
 
+    }
+
+
+    // تابع جدید برای تنظیم زوم
+    fun setZoom(zoomLevel: Float) {
+        // zoomLevel باید بین 1 (بدون زوم) و maxDigitalZoom باشد
+        val newZoom = zoomLevel.coerceIn(1f, maxDigitalZoom)
+        sensorArraySize?.let { sensorRect ->
+            val centerX = sensorRect.centerX()
+            val centerY = sensorRect.centerY()
+            // محاسبه عرض و ارتفاع جدید crop region بر اساس زوم
+            val newWidth = (sensorRect.width() / newZoom).toInt()
+            val newHeight = (sensorRect.height() / newZoom).toInt()
+            val left = centerX - newWidth / 2
+            val top = centerY - newHeight / 2
+            val right = left + newWidth
+            val bottom = top + newHeight
+            val zoomRect = Rect(left, top, right, bottom)
+            captureRequestBuilder?.set(CaptureRequest.SCALER_CROP_REGION, zoomRect)
+            try {
+                cameraCaptureSession?.setRepeatingRequest(
+                    captureRequestBuilder!!.build(),
+                    cameraCaptureCallBack,
+                    backgroundHandler
+                )
+            } catch (e: CameraAccessException) {
+                e.printStackTrace()
+            }
+        }
     }
 }

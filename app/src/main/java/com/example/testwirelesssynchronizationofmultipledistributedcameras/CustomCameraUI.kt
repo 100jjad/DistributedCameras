@@ -3,10 +3,8 @@ package com.example.testwirelesssynchronizationofmultipledistributedcameras
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -15,6 +13,7 @@ import android.os.Looper
 import android.util.Log
 import android.util.Range
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.Window
 import android.view.WindowInsetsController
@@ -23,10 +22,10 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
-import java.io.File
-import androidx.core.content.ContextCompat
-import androidx.core.util.TypedValueCompat.dpToPx
+import androidx.constraintlayout.widget.ConstraintLayout
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.CameraSettings
+import java.io.File
+
 
 class CustomCameraUI : Activity() , SlaveNetworkListener {
     private lateinit var textureView: AutoFitTextureView
@@ -43,13 +42,28 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
     private lateinit var ivVideoSaved: ImageView
     private lateinit var ivRotateCamera: ImageView
 
+    // سه SeekBar برای Exposure, ISO و Focus
     private lateinit var exposureSlider: SeekBar
-    private var aeRange: Range<Int>? = null  // محدوده‌ی exposure compensation
+    private lateinit var isoSlider: SeekBar
+    private lateinit var focusSlider: SeekBar
+    private lateinit var controlLayout: ConstraintLayout
+
+    // محدوده‌های تنظیمات (برای Exposure, ISO و Focus)
+    private var exposureTimeRange: Range<Long>? = null   // محدوده مجاز زمان نوردهی (Exposure Time) بر حسب نانوثانیه
+    private var isoRange: Range<Int>? = null
+    private var focusRange: Range<Float>? = null
 
     private var isRecording = false
-    private var exposureValue :Int = 30
+    private var exposureValue :Long = 30
 
     var savedRole : String = ""
+
+
+    // متغیرهای مربوط به زوم
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+    private var currentZoom: Float = 1f  // ۱ یعنی بدون زوم
+    // در صورت نیاز می‌توانید maxZoom را از دوربین دریافت کنید؛ در اینجا به صورت پیش‌فرض ۴ در نظر گرفته شده است.
+    private var maxZoom: Float = 4f
 
     companion object {
         private const val TAG = "CustomCameraUI"
@@ -63,6 +77,8 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         setContentView(R.layout.activity_custom_camera_ui)
 
 
+        // مقداردهی ScaleGestureDetector برای تشخیص حرکات دو انگشتی
+        scaleGestureDetector = ScaleGestureDetector(this, ScaleListener())
 
         // مقداردهی اولیه برای TextureView
         textureView = findViewById(R.id.camera_view)
@@ -103,24 +119,27 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         // setUpCameraOutputs داخل Camera2 ذخیره کنید و سپس از طریق یک متد به اکتیویتی برگردانید.
         // در اینجا فرض می‌کنیم که exposureCompensationRange پس از openCamera تنظیم شده است.
         exposureSlider.postDelayed({
-            aeRange = camera2ExposureRange() // متدی برای دریافت محدوده از Camera2 (یا مستقیماً استفاده از فیلد در Camera2 در صورت امکان)
-            aeRange?.let {
+            exposureTimeRange = camera2ExposureTimeRange() // متدی برای دریافت محدوده از Camera2 (یا مستقیماً استفاده از فیلد در Camera2 در صورت امکان)
+            exposureTimeRange?.let {
                 val lower = it.lower
                 val upper = it.upper
-                exposureSlider.max = upper - lower  // مثلا اگر range = [-2, +2]، max = 4
+                exposureSlider.max = 100 // مثلا اگر range = [-2, +2]، max = 4
                 // تنظیم مقدار پیش‌فرض نوار در وسط
-                exposureSlider.progress = (upper - lower) / 2
+                exposureSlider.progress = 50
             }
         }, 500)
 
         // تنظیم listener برای SeekBar
         exposureSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                aeRange?.let {
-                    val lower = it.lower
-                    val newExposure = lower + progress
-                    exposureValue = newExposure
-                    camera2.setExposureCompensation(newExposure)
+                exposureTimeRange?.let { range ->
+                    val lower = range.lower      // کمترین زمان نوردهی (نانوثانیه)
+                    val upper = range.upper      // بیشترین زمان نوردهی (نانوثانیه)
+                    // محاسبه درصد پیشرفت (0 تا 1)
+                    val fraction = progress.toFloat() / exposureSlider.max.toFloat()
+                    // محاسبه مقدار جدید بر اساس درصد
+                    val newExposure = lower + ((upper - lower) * fraction).toLong()
+                    camera2.setExposureTime(newExposure)
                 }
             }
 
@@ -129,6 +148,80 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         })
 
 
+        // تنظیمات مشابه برای isoSlider
+        isoSlider.postDelayed({
+            isoRange = camera2IsoRange()
+            isoRange?.let {
+                val lower = it.lower
+                val upper = it.upper
+                isoSlider.max = upper - lower
+                isoSlider.progress = (upper - lower) / 2
+            }
+        }, 500)
+
+        isoSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                isoRange?.let {
+                    val lower = it.lower
+                    val newIso = lower + progress
+                    camera2.setISO(newIso) // فرض بر این است که متد setIso در Camera2 وجود دارد
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) { }
+            override fun onStopTrackingTouch(seekBar: SeekBar?) { }
+        })
+/*
+        // تنظیمات مشابه برای focusSlider
+        focusSlider.postDelayed({
+            focusRange = camera2FocusRange()
+            focusRange?.let {
+                val lower = it.lower
+                val upper = it.upper
+                focusSlider.max = (upper - lower).toInt() // تبدیل Float به Int
+                focusSlider.progress = ((upper - lower) / 2).toInt() // تبدیل Float به Int
+            }
+        }, 500)
+
+        focusSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                focusRange?.let {
+                    val lower = it.lower
+                    val newFocus = lower + progress
+                    camera2.setManualFocus(newFocus) // فرض بر این است که متد setFocus در Camera2 وجود دارد
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) { }
+            override fun onStopTrackingTouch(seekBar: SeekBar?) { }
+        })*/
+
+
+
+// تنظیمات مربوط به focusSlider
+        focusSlider.postDelayed({
+            focusRange = camera2FocusRange()
+            focusRange?.let {
+                // به جای استفاده از 0 به عنوان مقدار پایین، از یک مقدار حداقل (epsilon) استفاده کنید.
+                val epsilon = 0.01f
+                val sliderMax = 1000  // رزولوشن ثابت برای نگاشت
+                focusSlider.max = sliderMax
+                // تنظیم مقدار پیش‌فرض؛ پیشنهاد می‌شود مقداری اندکی بالاتر از epsilon انتخاب شود.
+                focusSlider.progress = 50
+            }
+        }, 500)
+
+        focusSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                focusRange?.let { range ->
+                    val epsilon = 0.0001f  // مقدار حداقل فوکوس که به عنوان نقطه شروع به کار می‌رود.
+                    // نگاشت خطی: وقتی progress = 0 => فوکوس = epsilon (نه صفر)
+                    // و وقتی progress = max => فوکوس = range.upper
+                    val newFocus = epsilon + (progress.toFloat() / focusSlider.max.toFloat()) * (range.upper - epsilon)
+                    camera2.setManualFocus(newFocus)
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) { }
+            override fun onStopTrackingTouch(seekBar: SeekBar?) { }
+        })
 
     }
 
@@ -142,6 +235,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             SlaveNetworkManager.removeListener(this)
         }
     }
+
 
     private fun makeNavigationBarTransparent() {
         val window: Window = this.window
@@ -178,6 +272,9 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         ivVideoSaved = findViewById(R.id.iv_video_saved)
         ivRotateCamera = findViewById(R.id.iv_rotate_camera)
         exposureSlider = findViewById(R.id.exposure_slider)
+        isoSlider = findViewById(R.id.iso_slider)
+        focusSlider = findViewById(R.id.focus_slider)
+        controlLayout = findViewById(R.id.control_layout)
 
 
         // دریافت مقادیر از Intent
@@ -254,53 +351,60 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         Log.d(TAG, "Frame Rate: $frameRate")
         Log.d(TAG, "Duration: $duration")
 
-        val hideSliderRunnable = Runnable {
-            exposureSlider.visibility = View.GONE
+        val hideControlLayoutRunnable = Runnable {
+            controlLayout.visibility = View.GONE
         }
 
         // اضافه کردن listener لمس روی preview
         textureView.setOnTouchListener { view, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
+
+            // ارسال رویداد لمس به ScaleGestureDetector برای کنترل زوم
+            scaleGestureDetector.onTouchEvent(event)
+            if (event.pointerCount == 1) {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
 
 
-                    // حذف هر delayed hide قبلی
-                    exposureSlider.removeCallbacks(hideSliderRunnable)
+                        // حذف هر برنامه‌ی مخفی‌سازی قبلی
+                        controlLayout.removeCallbacks(hideControlLayoutRunnable)
 
-                    // فراخوانی متد بهینه‌سازی نوردهی قبل از نمایش seekbar
-                    camera2.autoOptimizeExposure()
-                    aeRange?.let {
-                        val lower = it.lower
-                        val upper = it.upper
-                        exposureSlider.max = upper - lower  // مثلا اگر range = [-2, +2]، max = 4
-                        // تنظیم مقدار پیش‌فرض نوار در وسط
-                        exposureSlider.progress = (upper - lower) / 2
+                        /*
+                                            // فراخوانی متد بهینه‌سازی نوردهی قبل از نمایش seekbar
+                                            //camera2.autoOptimizeExposure()
+                                            exposureTimeRange?.let {
+                                                val lower = it.lower
+                                                val upper = it.upper
+                                                exposureSlider.max = 100  // مثلا اگر range = [-2, +2]، max = 4
+                                                // تنظیم مقدار پیش‌فرض نوار در وسط
+                                                //exposureSlider.progress = 50
+                                            }*/
+
+
+                        // نمایش کل لایه‌ی کنترل
+                        controlLayout.visibility = View.VISIBLE
+
+                        // تنظیم موقعیت لایه نسبت به لمس کاربر
+                        controlLayout.x = event.x - controlLayout.width / 2
+                        controlLayout.y = event.y - controlLayout.height / 2
+
+                        // فراخوانی performClick() برای پشتیبانی از قابلیت‌های دسترسی
+                        view.performClick()
                     }
+                    MotionEvent.ACTION_MOVE -> {
+                        // به‌روز‌رسانی موقعیت نوار در صورت نیاز
+                        controlLayout.x = event.x - controlLayout.width / 2
+                        controlLayout.y = event.y - controlLayout.height / 2
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
 
+                        // برنامه‌ریزی مخفی شدن نوار با تاخیر 10 ثانیه‌ای
+                        controlLayout.postDelayed(hideControlLayoutRunnable, 20000)
 
-                    // نمایش نوار و تنظیم موقعیت (این تنظیمات ممکن است بسته به نیاز تغییر کند)
-                    exposureSlider.visibility = View.VISIBLE
-                    // تنظیم مختصات نوار (برای مثال می‌توانید با تغییر x/y موقعیت دلخواه را بدهید)
-                    exposureSlider.x = event.x - exposureSlider.width / 2
-                    exposureSlider.y = event.y - exposureSlider.height / 2
-
-                    // فراخوانی performClick() برای پشتیبانی از قابلیت‌های دسترسی
-                    view.performClick()
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    // به‌روز‌رسانی موقعیت نوار در صورت نیاز
-                    exposureSlider.x = event.x - exposureSlider.width / 2
-                    exposureSlider.y = event.y - exposureSlider.height / 2
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-
-                    // برنامه‌ریزی مخفی شدن نوار با تاخیر 10 ثانیه‌ای
-                    exposureSlider.postDelayed(hideSliderRunnable, 10000)
-
-/*
-                    exposureSlider.postDelayed({
-                        exposureSlider.visibility = View.GONE
-                    }, 10000)*/
+                        /*
+                                            exposureSlider.postDelayed({
+                                                exposureSlider.visibility = View.GONE
+                                            }, 10000)*/
+                    }
                 }
             }
             true
@@ -318,14 +422,37 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
 
     // در صورت تمایل، می‌توانید یک متد کمکی برای دریافت محدوده exposure از Camera2 اضافه کنید:
-    private fun camera2ExposureRange(): Range<Int>? {
+    private fun camera2ExposureTimeRange(): Range<Long>? {
         // اگر در کلاس Camera2 فیلد exposureCompensationRange عمومی (public) باشد
         // می‌توانید آن را مستقیماً بخوانید یا یک متد getter اضافه کنید.
         // به عنوان نمونه:
         return try {
             val field = Camera2::class.java.getDeclaredField("exposureCompensationRange")
             field.isAccessible = true
+            field.get(camera2) as? Range<Long>
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun camera2IsoRange(): Range<Int>? {
+        return try {
+            val field = Camera2::class.java.getDeclaredField("isoRange")
+            field.isAccessible = true
             field.get(camera2) as? Range<Int>
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+
+    private fun camera2FocusRange(): Range<Float>? {
+        return try {
+            val field = Camera2::class.java.getDeclaredField("focusRange")
+            field.isAccessible = true
+            field.get(camera2) as? Range<Float>
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -392,6 +519,19 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         // ایجاد فایل ویدئو با نام یکتا
         val videoFile = File(videoDirectory, "video_${System.currentTimeMillis()}.mp4")
         return videoFile.absolutePath
+    }
+
+
+
+    // پیاده‌سازی ScaleGestureDetector به عنوان inner class
+    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            currentZoom *= detector.scaleFactor
+            currentZoom = currentZoom.coerceIn(1f, maxZoom)
+            // فراخوانی تابع setZoom در کلاس دوربین برای اعمال زوم جدید
+            camera2.setZoom(currentZoom)
+            return true
+        }
     }
 
     override fun onMasterIpReceived(masterIp: String) {
