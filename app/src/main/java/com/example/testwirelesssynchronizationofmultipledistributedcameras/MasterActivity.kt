@@ -97,6 +97,7 @@ class MasterActivity : AppCompatActivity(), MasterNetworkManager.FpsUpdateListen
             // ارسال تنظیمات به تمام اسلیوها
             val jsonSettings = Json.encodeToString(settings)
             MasterNetworkManager.sendMessageToAllClients("Camera_Setting:$jsonSettings")
+
         }
 
         // شروع ضبط ویدیو
@@ -186,6 +187,7 @@ class MasterActivity : AppCompatActivity(), MasterNetworkManager.FpsUpdateListen
             }
         }
     }
+
 
 
 

@@ -14,7 +14,11 @@ class AutoFitTextureView : TextureView {
 
     constructor(context: Context, attributeSet: AttributeSet?) : this(context, attributeSet, 0)
 
-    constructor(context: Context, attributeSet: AttributeSet?, defStyle: Int) : super(context, attributeSet, defStyle)
+    constructor(context: Context, attributeSet: AttributeSet?, defStyle: Int) : super(
+        context,
+        attributeSet,
+        defStyle
+    )
 
     /**
      * Sets the aspect ratio for this view. The size of the view will be measured based on the ratio
@@ -53,6 +57,7 @@ class AutoFitTextureView : TextureView {
         // اگر نیاز دارید عملیات خاصی هنگام کلیک انجام شود، آن را اینجا اضافه کنید.
         return true
     }
+}
 /*
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -89,4 +94,3 @@ class AutoFitTextureView : TextureView {
         mMatrix.postTranslate(dx, dy)
         setTransform(mMatrix) // اعمال Matrix روی TextureView
     }*/
-}

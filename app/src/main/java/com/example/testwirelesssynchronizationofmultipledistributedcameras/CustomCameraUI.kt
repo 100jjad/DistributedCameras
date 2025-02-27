@@ -55,6 +55,8 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
     private var isRecording = false
     private var exposureValue :Long = 30
+    private var isoValue :Int = 30
+    private var focusValue :Float = 30F
 
     var savedRole : String = ""
 
@@ -125,7 +127,11 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                 val upper = it.upper
                 exposureSlider.max = 100 // مثلا اگر range = [-2, +2]، max = 4
                 // تنظیم مقدار پیش‌فرض نوار در وسط
-                exposureSlider.progress = 50
+                val defaultProgress = 50
+                exposureSlider.progress = defaultProgress
+                // محاسبه مقدار اولیه به صورت میانه
+                val fraction = defaultProgress.toFloat() / exposureSlider.max.toFloat()
+                exposureValue = lower + ((upper - lower) * fraction).toLong()
             }
         }, 500)
 
@@ -138,8 +144,8 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                     // محاسبه درصد پیشرفت (0 تا 1)
                     val fraction = progress.toFloat() / exposureSlider.max.toFloat()
                     // محاسبه مقدار جدید بر اساس درصد
-                    val newExposure = lower + ((upper - lower) * fraction).toLong()
-                    camera2.setExposureTime(newExposure)
+                    exposureValue = lower + ((upper - lower) * fraction).toLong()
+                    camera2.setExposureTime(exposureValue)
                 }
             }
 
@@ -163,38 +169,13 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 isoRange?.let {
                     val lower = it.lower
-                    val newIso = lower + progress
-                    camera2.setISO(newIso) // فرض بر این است که متد setIso در Camera2 وجود دارد
+                    isoValue = lower + progress
+                    camera2.setISO(isoValue) // فرض بر این است که متد setIso در Camera2 وجود دارد
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) { }
             override fun onStopTrackingTouch(seekBar: SeekBar?) { }
         })
-/*
-        // تنظیمات مشابه برای focusSlider
-        focusSlider.postDelayed({
-            focusRange = camera2FocusRange()
-            focusRange?.let {
-                val lower = it.lower
-                val upper = it.upper
-                focusSlider.max = (upper - lower).toInt() // تبدیل Float به Int
-                focusSlider.progress = ((upper - lower) / 2).toInt() // تبدیل Float به Int
-            }
-        }, 500)
-
-        focusSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                focusRange?.let {
-                    val lower = it.lower
-                    val newFocus = lower + progress
-                    camera2.setManualFocus(newFocus) // فرض بر این است که متد setFocus در Camera2 وجود دارد
-                }
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) { }
-            override fun onStopTrackingTouch(seekBar: SeekBar?) { }
-        })*/
-
-
 
 // تنظیمات مربوط به focusSlider
         focusSlider.postDelayed({
@@ -215,8 +196,9 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                     val epsilon = 0.0001f  // مقدار حداقل فوکوس که به عنوان نقطه شروع به کار می‌رود.
                     // نگاشت خطی: وقتی progress = 0 => فوکوس = epsilon (نه صفر)
                     // و وقتی progress = max => فوکوس = range.upper
-                    val newFocus = epsilon + (progress.toFloat() / focusSlider.max.toFloat()) * (range.upper - epsilon)
-                    camera2.setManualFocus(newFocus)
+                    val fraction = progress.toFloat() / focusSlider.max.toFloat()
+                    focusValue = (1 - fraction) * epsilon + fraction * range.upper
+                    camera2.setManualFocus(focusValue)
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) { }
@@ -235,6 +217,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             SlaveNetworkManager.removeListener(this)
         }
     }
+
 
 
     private fun makeNavigationBarTransparent() {
@@ -464,7 +447,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
 // ادامه‌ی تنظیمات MediaRecorder یا سایر عملیات ذخیره‌سازی...
 
-        camera2.prepareVideoRecordingSession(this@CustomCameraUI , outputFilePath , exposureValue , frameRate?.toInt() ?: 30 , true)
+        camera2.prepareVideoRecordingSession(this@CustomCameraUI , outputFilePath , exposureValue,isoValue , focusValue , frameRate?.toInt() ?: 30 , true)
         isRecording = true
         ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
         Toast.makeText(this, "Recording started", Toast.LENGTH_SHORT).show()
