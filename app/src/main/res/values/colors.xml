@@ -6,5 +6,8 @@
     <color name="primarysecond">#FB8500</color>
     <color name="accent">#219EBC</color>
     <color name="background">#F6FAFD</color>
+    <color name="sent">#00C853</color>
+    <color name="unsent">#D50000</color>
+    <color name="sending">#FF6D00</color>
 
 </resources>

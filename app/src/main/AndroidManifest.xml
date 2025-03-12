@@ -48,6 +48,7 @@
         <activity android:name=".SlaveActivity"
             android:exported="true"/>
         <activity android:name=".Temp.CameraActivity" />
+        <activity android:name=".VideoListActivity" />
 
 
         <activity

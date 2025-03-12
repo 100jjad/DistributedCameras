@@ -2,6 +2,7 @@ package com.example.testwirelesssynchronizationofmultipledistributedcameras
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -24,6 +25,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.CameraSettings
+import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.TimeSyncManager
 import java.io.File
 
 
@@ -79,6 +81,11 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         setContentView(R.layout.activity_custom_camera_ui)
 
 
+        // SharedPreferences برای ذخیره نقش
+        val sharedPreferences: SharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE)
+        savedRole = sharedPreferences.getString("user_role", "slave").toString()
+
+
         // مقداردهی ScaleGestureDetector برای تشخیص حرکات دو انگشتی
         scaleGestureDetector = ScaleGestureDetector(this, ScaleListener())
 
@@ -86,11 +93,8 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         textureView = findViewById(R.id.camera_view)
 
         // مقداردهی اولیه Camera2
-        camera2 = Camera2(this, textureView)
+        camera2 = Camera2(this, textureView , savedRole)
 
-        // SharedPreferences برای ذخیره نقش
-        val sharedPreferences: SharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE)
-        savedRole = sharedPreferences.getString("user_role", "slave").toString()
         // فراخوانی تابع initialize برای دریافت و ذخیره مقادیر
 
         if (savedRole == "slave")
@@ -181,28 +185,28 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         focusSlider.postDelayed({
             focusRange = camera2FocusRange()
             focusRange?.let {
-                // به جای استفاده از 0 به عنوان مقدار پایین، از یک مقدار حداقل (epsilon) استفاده کنید.
-                val epsilon = 0.01f
-                val sliderMax = 1000  // رزولوشن ثابت برای نگاشت
+                val sliderMax = 10000
                 focusSlider.max = sliderMax
-                // تنظیم مقدار پیش‌فرض؛ پیشنهاد می‌شود مقداری اندکی بالاتر از epsilon انتخاب شود.
-                focusSlider.progress = 50
+                focusSlider.progress = sliderMax  // مقدار اولیه روی بی‌نهایت (دور)
             }
         }, 500)
 
         focusSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 focusRange?.let { range ->
-                    val epsilon = 0.0001f  // مقدار حداقل فوکوس که به عنوان نقطه شروع به کار می‌رود.
-                    // نگاشت خطی: وقتی progress = 0 => فوکوس = epsilon (نه صفر)
-                    // و وقتی progress = max => فوکوس = range.upper
                     val fraction = progress.toFloat() / focusSlider.max.toFloat()
-                    focusValue = (1 - fraction) * epsilon + fraction * range.upper
+                    // نگاشت معکوس: 0 -> minFocusDistance (نزدیک)، 1 -> 0 (بی‌نهایت)
+                    focusValue = (1 - fraction) * range.upper + fraction * 0f
+                    // اطمینان از اینکه وقتی به حداکثر می‌رسه، دقیقاً 0f باشه
+                    if (progress == focusSlider.max) {
+                        focusValue = 0.0f
+                    }
                     camera2.setManualFocus(focusValue)
+                    Log.d("FocusDebug", "Progress: $progress, Fraction: $fraction, FocusValue: $focusValue")
                 }
             }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) { }
-            override fun onStopTrackingTouch(seekBar: SeekBar?) { }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
     }
@@ -310,6 +314,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         ivCaptureImage.setOnClickListener {
 
             Toast.makeText(this, "Video Recorde clicked", Toast.LENGTH_SHORT).show()
+            MasterNetworkManager.sendTriggerTimeToSlaves()
             MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING_STATUS_2")
             // اکشن برای دکمه ضبط
             if (!isRecording) {
@@ -323,6 +328,9 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         ivVideoSaved.setOnClickListener {
             // اکشن برای دکمه ویدئو ذخیره شده
             Toast.makeText(this, "Video Saved clicked", Toast.LENGTH_SHORT).show()
+
+            val intent = Intent(this, VideoListActivity::class.java)
+            startActivity(intent)
         }
 
         ivRotateCamera.setOnClickListener {
@@ -395,6 +403,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
         if (Role == "slave")
         {
+            SlaveNetworkManager.sendOffsetToMaster(TimeSyncManager.getOffset())
             ivCaptureImage.visibility = View.INVISIBLE
         }
         else

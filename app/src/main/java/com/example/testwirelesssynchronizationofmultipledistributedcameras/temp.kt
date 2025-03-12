@@ -377,6 +377,8 @@ class Camera3(private val activity: Activity, private val textureView: AutoFitTe
             e.printStackTrace()
         }
     }
+
+
     private fun flashOn(captureRequestBuilder: CaptureRequest.Builder) {
         // برای API level 28 و بالاتر
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

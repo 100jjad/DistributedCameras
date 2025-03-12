@@ -130,6 +130,10 @@ object SlaveNetworkManager {
         sendMessage("CONFIRM_SETTINGS")
     }
 
+    fun sendOffsetToMaster(offset: Long) {
+        sendMessage("OFFSET_VALUE:$offset")
+    }
+
     /**
      * شروع به همگام‌سازی زمان با مستر (ارسال چندین درخواست TIME_REQUEST)
      */
@@ -179,6 +183,12 @@ object SlaveNetworkManager {
             }
             message.startsWith("READY_FOR_RECORDING") -> {
                 listener?.onReadyForRecording(message)
+            }
+            message.startsWith("TRIGGER_TIME:") -> {
+                val triggerTime = message.removePrefix("TRIGGER_TIME:").toLongOrNull()
+                if (triggerTime != null) {
+                    scheduleRecording(triggerTime)
+                }
             }
             else -> {
                 listener?.onError("پیام ناشناخته دریافت شد: $message")
@@ -243,6 +253,23 @@ object SlaveNetworkManager {
         return null // در صورتی که آدرس پیدا نشد
     }
 
+    private fun scheduleRecording(triggerTime: Long) {
+        networkScope.launch {
+            val offset = TimeSyncManager.getOffset()
+            val localTriggerTime = triggerTime - offset // تبدیل به زمان محلی
+            val currentTime = System.currentTimeMillis()
+            val delayTime = localTriggerTime - currentTime
+
+            if (delayTime > 0) {
+                delay(delayTime)
+                startRecording()
+            } else {
+                // اگر زمان گذشته باشد، بلافاصله ضبط را شروع کنید
+                startRecording()
+            }
+        }
+    }
+
     /**
      * بستن اتصال به مستر (برای آزادسازی منابع)
      */
@@ -254,5 +281,7 @@ object SlaveNetworkManager {
         }
     }
 
-
+    private fun startRecording() {
+        listener?.onReadyForRecording("TRIGGERED_RECORDING")
+    }
 }

@@ -26,12 +26,14 @@ import java.util.Collections.singletonList
 import kotlin.Comparator
 import android.media.MediaRecorder
 import android.os.Environment
+import android.os.SystemClock
 import android.provider.MediaStore
+import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.TimeSyncManager
 import java.io.File
 import java.util.Arrays
 
 
-class Camera2(private val activity: Activity, private val textureView: AutoFitTextureView) {
+class Camera2(private val activity: Activity, private val textureView: AutoFitTextureView , private var role: String = "Master") {
 
     private var onBitmapReady: (Bitmap) -> Unit = {}
     private val cameraManager: CameraManager =
@@ -66,6 +68,10 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     private var surface: Surface? = null
     private var sensorArraySize: Rect? = null
     private var maxDigitalZoom: Float = 1f
+    private var currentZoom: Float = 1f  // مقدار پیش‌فرض 1 یعنی بدون زوم
+
+    private val videoTimestamps = mutableListOf<Long>() // لیست برای ذخیره timestampها
+    private var timestampFilePath: String? = null // مسیر فایل ذخیره timestampها
 
     /**
      * Whether the current camera device supports Flash or not.
@@ -76,6 +82,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
      * Orientation of the camera sensor
      */
     private var mSensorOrientation = 0
+
+    private var bootTimeMillis: Long = 0L
 
 
     private val cameraCaptureCallBack = object : CameraCaptureSession.CaptureCallback() {
@@ -921,140 +929,6 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         }
     }
 
-    /*
-        // داخل کلاس Camera2
-        fun toggleFlash() {
-            if (!isFlashSupported) {
-                Toast.makeText(activity, "فلاش پشتیبانی نمی‌شود", Toast.LENGTH_SHORT).show()
-                return
-            }
-            if (cameraFacing != CameraCharacteristics.LENS_FACING_BACK) {
-                Toast.makeText(activity, "فلاش فقط برای دوربین عقب فعال است", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            // تغییر حالت فلاش به ترتیب: OFF -> ON -> AUTO -> OFF
-            flash = when (flash) {
-                FLASH.OFF -> FLASH.ON
-                else -> FLASH.OFF
-            }
-
-            // اعمال تغییرات در پیش‌نمایش
-            updateFlashInPreview()
-        }
-        private fun updateFlashInPreview() {
-            try {
-                if (captureRequestBuilder == null) {
-                    Log.e("Camera2", "captureRequestBuilder null است!")
-                    return
-                }
-                captureRequestBuilder?.let { builder ->
-                    setFlashMode2(builder, false)
-                    val request = builder.build()
-                    cameraCaptureSession?.setRepeatingRequest(request, null, null)
-                }
-            } catch (e: Exception) {
-                Log.e("Camera2", "خطا در updateFlashInPreview: ${e.message}")
-            }
-        }
-
-        private fun setFlashMode2(
-            captureRequestBuilder: CaptureRequest.Builder, // نام پارامتر: captureRequestBuilder
-            trigger: Boolean
-        ) {
-            if (trigger) {
-                captureRequestBuilder.set(
-                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
-                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START
-                )
-            }
-
-            when (flash) {
-                FLASH.ON -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        // استفاده از captureRequestBuilder (نام صحیح پارامتر)
-                        captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH)
-                    } else {
-                        captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH)
-                    }
-                }
-                FLASH.AUTO -> {
-                    captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
-                }
-                FLASH.OFF -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF)
-                    } else {
-                        captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-                    }
-                }
-            }
-        }*/
-
-// uncomment to use
-
-//    fun isFlashAuto() =
-//        isFlashSupported && flash == FLASH.AUTO && cameraFacing == CameraCharacteristics.LENS_FACING_BACK
-//
-//
-//    fun isFlashON() =
-//        isFlashSupported && (flash == FLASH.ON) && cameraFacing == CameraCharacteristics.LENS_FACING_BACK
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-    /*private var isFlashOn = false
-
-        private fun toggleFlashForVideo() {
-            if (cameraDevice == null || captureRequestBuilder == null) {
-                return
-            }
-
-            try {
-                // تغییر حالت فلش برای فیلم‌برداری
-                isFlashOn = !isFlashOn
-
-                if (isFlashOn) {
-                    // فلش همیشه روشن برای فیلمبرداری
-                    captureRequestBuilder?.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH)
-                } else {
-                    // خاموش کردن فلش
-                    captureRequestBuilder?.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-                }
-
-                // اعمال تنظیمات به جلسه ضبط
-                cameraCaptureSession?.setRepeatingRequest(captureRequestBuilder!!.build(), null, backgroundHandler)
-            } catch (e: CameraAccessException) {
-                e.printStackTrace()
-            }
-        }
-    */
-
-
-    /*
-
-    این دو تابع برای فعال کردن فلاش دوربین به طور خودکار و بر اساس نور محیط و در زمان فیلمبرداری استفاده میشود
-
-private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
-    // تنظیم حالت فلاش برای ویدئو
-    captureRequestBuilder.set(
-        CaptureRequest.CONTROL_AE_MODE,
-        CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH
-    )
-    captureRequestBuilder.set(
-        CaptureRequest.FLASH_MODE,
-        CaptureRequest.FLASH_MODE_SINGLE
-    )
-}
-
-    fun enableVideoFlash() {
-        captureRequestBuilder?.let { builder ->
-            setVideoFlashMode(builder)
-            cameraCaptureSession?.setRepeatingRequest(
-                builder.build(),
-                cameraCaptureCallBack,
-                backgroundHandler
-            )
-        }
-    }*/
 
     fun takePhoto(onBitmapReady: (Bitmap) -> Unit) {
 
@@ -1062,15 +936,6 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
         lockPreview()
     }
 
-
-    /*
-        // متد تنظیم exposure compensation:
-        fun setExposureCompensation(value: Int) {
-            // توجه داشته باشید که در حالت preview ممکن است builder موجود باشد
-            captureRequestBuilder?.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, value)
-            cameraCaptureSession?.setRepeatingRequest(captureRequestBuilder!!.build(), cameraCaptureCallBack, backgroundHandler)
-        }
-    */
 
     fun setExposureTime(exposureTime: Long) {
         // مطمئن شوید که exposureTime در بازه مجاز قرار دارد
@@ -1103,18 +968,6 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
     }
 
 
-    /*    fun autoOptimizeExposure() {
-            // اگر captureRequestBuilder آماده است
-            captureRequestBuilder?.let { builder ->
-                // تنظیم حالت AE به خودکار (با flash در صورت نیاز)
-                //builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
-                // تنظیم مقدار Exposure Compensation به صفر (یا مقدار دلخواه)
-                builder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 0)
-                // به‌روزرسانی درخواست تکراری
-                cameraCaptureSession?.setRepeatingRequest(builder.build(), cameraCaptureCallBack, backgroundHandler)
-            }
-        }*/
-
     fun setISO(value: Int) {
         // غیرفعال کردن نوردهی خودکار برای کنترل دستی ISO
         captureRequestBuilder?.set(
@@ -1136,18 +989,25 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
     }
 
     fun setManualFocus(focusDistance: Float) {
-        // غیرفعال کردن فوکوس خودکار
-        captureRequestBuilder?.set(
-            CaptureRequest.CONTROL_AF_MODE,
-            CaptureRequest.CONTROL_AF_MODE_OFF
-        )
-        // تنظیم دستی فاصله فوکوس
-        captureRequestBuilder?.set(CaptureRequest.LENS_FOCUS_DISTANCE, focusDistance)
-        cameraCaptureSession?.setRepeatingRequest(
-            captureRequestBuilder!!.build(),
-            cameraCaptureCallBack,
-            backgroundHandler
-        )
+        try {
+            // توقف درخواست‌های قبلی برای جلوگیری از تداخل
+            cameraCaptureSession?.stopRepeating()
+
+            // تنظیم فوکوس دستی
+            captureRequestBuilder?.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+            captureRequestBuilder?.set(CaptureRequest.LENS_FOCUS_DISTANCE, focusDistance)
+
+            // ارسال درخواست جدید
+            cameraCaptureSession?.setRepeatingRequest(
+                captureRequestBuilder!!.build(),
+                cameraCaptureCallBack,
+                backgroundHandler
+            )
+            Log.d("FocusDebug", "Manual Focus Set: $focusDistance")
+        } catch (e: CameraAccessException) {
+            e.printStackTrace()
+            Log.e("FocusDebug", "Error setting manual focus: ${e.message}")
+        }
     }
 
     fun autoOptimizeFocus() {
@@ -1186,7 +1046,7 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
                     // ذخیره در پوشه عمومی Movies (یا Videos)
                     put(
                         MediaStore.Video.Media.RELATIVE_PATH,
-                        Environment.DIRECTORY_MOVIES + "/YourAppName"
+                        Environment.DIRECTORY_MOVIES + "/DistributedCameras"
                     )
                 }
                 val resolver = context.contentResolver
@@ -1248,10 +1108,16 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
         framerate: Int,
         autostart: Boolean = false
     ) {
+        // محاسبه یک‌باره در شروع ضبط
+        val currentTimeMillis = System.currentTimeMillis()
+        val elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+        bootTimeMillis = currentTimeMillis - (elapsedRealtimeNanos / 1_000_000)
+
         if (cameraDevice == null || !textureView.isAvailable || previewSize == null) return
 
         // پیکربندی MediaRecorder
         setUpMediaRecorder(context, outputFile, framerate)
+        timestampFilePath = outputFile // ذخیره موقت مسیر فایل ویدئو
 
         // تنظیم اندازه بافر سطح TextureView
         val texture = textureView.surfaceTexture
@@ -1269,25 +1135,24 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
                 set(CaptureRequest.LENS_FOCUS_DISTANCE, currentFocusValue)
                 addTarget(previewSurface)
                 addTarget(recorderSurface)
+
+                // اعمال زوم فعلی به CaptureRequest
+                if (currentZoom > 1f) {
+                    sensorArraySize?.let { sensorRect ->
+                        val centerX = sensorRect.centerX()
+                        val centerY = sensorRect.centerY()
+                        val newWidth = (sensorRect.width() / currentZoom).toInt()
+                        val newHeight = (sensorRect.height() / currentZoom).toInt()
+                        val left = centerX - newWidth / 2
+                        val top = centerY - newHeight / 2
+                        val right = left + newWidth
+                        val bottom = top + newHeight
+                        val zoomRect = Rect(left, top, right, bottom)
+                        set(CaptureRequest.SCALER_CROP_REGION, zoomRect)
+                    }
+                }
             }
 
-/*        captureRequestBuilder =
-            cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
-                // تنظیم AE و مقدار جبران نور
-                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-//            set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, currentExposureValue)
-                captureRequestBuilder?.set(
-                    CaptureRequest.SENSOR_EXPOSURE_TIME,
-                    currentExposureValue
-                )
-                // تنظیم ISO
-                set(CaptureRequest.SENSOR_SENSITIVITY, currentIsoValue)
-                // تنظیم فوکوس دستی
-                set(CaptureRequest.LENS_FOCUS_DISTANCE, currentFocusValue)
-                // افزودن هر دو سطح
-                addTarget(previewSurface)
-                addTarget(recorderSurface)
-            }*/
 
         // ایجاد یک capture session مشترک شامل هر دو سطح
         cameraDevice!!.createCaptureSession(
@@ -1299,7 +1164,7 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
                     // شروع به ارسال درخواست‌های تکراری
                     cameraCaptureSession!!.setRepeatingRequest(
                         captureRequest!!,
-                        cameraCaptureCallBack,
+                        timestampCollectingCallback,
                         backgroundHandler
                     )
                     Log.d("Camera2", "Shared capture session for preview and recording configured")
@@ -1360,14 +1225,16 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
                     }
                 }
                 mediaRecorder = null
-
-                // بازگرداندن preview
-                createPreviewSession()
+                // ذخیره timestampها بعد از توقف
+                timestampFilePath?.let { saveTimestampsToFile(activity, it) } // activity به عنوان context
 
             } catch (e: Exception) {
+                Log.e("Camera2", "خطا در توقف ضبط: ${e.message}")
                 e.printStackTrace()
             }
         }
+        // بازگرداندن preview
+        createPreviewSession()
 
     }
 
@@ -1376,6 +1243,7 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
     fun setZoom(zoomLevel: Float) {
         // zoomLevel باید بین 1 (بدون زوم) و maxDigitalZoom باشد
         val newZoom = zoomLevel.coerceIn(1f, maxDigitalZoom)
+        currentZoom = newZoom  // ذخیره مقدار زوم فعلی
         sensorArraySize?.let { sensorRect ->
             val centerX = sensorRect.centerX()
             val centerY = sensorRect.centerY()
@@ -1427,4 +1295,87 @@ private fun setVideoFlashMode(captureRequestBuilder: CaptureRequest.Builder) {
             Log.e("Camera2", "Error collecting timestamps: ${e.message}")
         }
     }
+
+    // Callback جدید برای جمع‌آوری timestampها در حین ضبط ویدئو
+// Wrapper برای cameraCaptureCallBack که timestampها رو هم جمع‌آوری می‌کنه
+    private val timestampCollectingCallback = object : CameraCaptureSession.CaptureCallback() {
+        override fun onCaptureCompleted(
+            session: CameraCaptureSession,
+            request: CaptureRequest,
+            result: TotalCaptureResult
+        ) {
+            // اجرای منطق اصلی cameraCaptureCallBack
+            cameraCaptureCallBack.onCaptureCompleted(session, request, result)
+
+            // جمع‌آوری timestamp بدون تغییر در رفتار اصلی
+            //val timestamp = result.get(CaptureResult.SENSOR_TIMESTAMP) ?: return
+            //videoTimestamps.add(timestamp)
+
+            // جمع‌آوری timestamp و تبدیل به زمان Unix
+            val sensorTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP) ?: return
+            val unixTimestamp = convertToUnixTime(sensorTimestamp)
+            videoTimestamps.add(unixTimestamp)
+        }
+
+        override fun onCaptureProgressed(
+            session: CameraCaptureSession,
+            request: CaptureRequest,
+            partialResult: CaptureResult
+        ) {
+            // اجرای منطق اصلی cameraCaptureCallBack
+            cameraCaptureCallBack.onCaptureProgressed(session, request, partialResult)
+        }
+    }
+
+    // متد ذخیره timestampها در فایل
+    private fun saveTimestampsToFile(context: Context, videoFileName: String) {
+        // چک می‌کنیم که آیا timestamp داریم یا نه
+        if (videoTimestamps.isEmpty()) {
+            Log.e("Camera2", "هیچ timestampی جمع‌آوری نشده!")
+            return
+        }
+
+// استخراج فقط نام فایل ویدئو بدون مسیر
+        val videoFileName = File(videoFileName).name
+
+        // ساخت نام فایل timestamp بر اساس نام ویدئو
+        val timestampFileName = videoFileName.replace(".mp4", "_timestamps.txt")
+
+        // ذخیره با MediaStore برای همه نسخه‌ها
+        val values = ContentValues().apply {
+            put(MediaStore.Files.FileColumns.DISPLAY_NAME, timestampFileName)
+            put(MediaStore.Files.FileColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.Files.FileColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/DistributedCameras")
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(MediaStore.Files.getContentUri("external"), values)
+        uri?.let {
+            resolver.openOutputStream(it)?.use { outputStream ->
+                outputStream.write(videoTimestamps.joinToString("\n").toByteArray())
+            }
+            Log.d("Camera2", "فایل timestamp در $uri ذخیره شد")
+            // نمایش پیام به کاربر
+            (context as? Activity)?.runOnUiThread {
+                Toast.makeText(context, "timestampها در DCIM/DistributedCameras ذخیره شدند", Toast.LENGTH_SHORT).show()
+            }
+        } ?: run {
+            Log.e("Camera2", "خطا در ایجاد فایل timestamp")
+        }
+    }
+
+    private fun convertToUnixTime(sensorTimestamp: Long): Long {
+        if (role == "slave")
+        {
+            val unixTimeMillis = bootTimeMillis + (sensorTimestamp / 1_000_000) // زمان Unix محلی
+            val offset = TimeSyncManager.getOffset() // افست محاسبه‌شده
+            return unixTimeMillis + offset // زمان هماهنگ‌شده با مستر
+        }
+        else{
+            // استفاده از مقدار ذخیره‌شده
+            val unixTimeMillis = bootTimeMillis + (sensorTimestamp / 1_000_000)
+            return unixTimeMillis
+        }
+    }
+
 }

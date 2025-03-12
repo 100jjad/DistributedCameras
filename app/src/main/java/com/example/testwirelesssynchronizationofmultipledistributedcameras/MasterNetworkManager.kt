@@ -32,6 +32,8 @@ object MasterNetworkManager {
     private val messageQueue: Queue<Pair<String, Socket>> = LinkedList()
     var t2: Long = 0
 
+    private val slaveOffsets = ConcurrentHashMap<String, Long>()
+
     fun startServer(port: Int, onClientConnected: (String) -> Unit, onClientDisconnected: (String) -> Unit) {
         scope.launch {
             try {
@@ -103,6 +105,17 @@ object MasterNetworkManager {
 
     private fun processClientMessage(message: String, clientSocket: Socket) {
         when {
+
+            message.startsWith("OFFSET_VALUE:") -> {
+                val offset = message.removePrefix("OFFSET_VALUE:").toLongOrNull()
+                if (offset != null) {
+                    val clientAddress = clientSocket.inetAddress.hostAddress
+                    slaveOffsets[clientAddress] = offset
+                    Log.d(TAG, "Received offset from $clientAddress: $offset")
+                }
+            }
+
+
             message.startsWith("FPS_Supported:") -> {
                 val parts = message.removePrefix("FPS_Supported:").split(":")
                 if (parts.size == 2) {
@@ -224,6 +237,19 @@ object MasterNetworkManager {
                 }
             }
         }
+    }
+
+    private fun calculateTriggerTime(): Long {
+        val maxOffset = slaveOffsets.values.maxOrNull() ?: 0L
+        val additionalTime = 5000L // 5 ثانیه
+        val currentTime = System.currentTimeMillis()
+        return currentTime + maxOffset + additionalTime
+    }
+
+    fun sendTriggerTimeToSlaves() {
+        val triggerTime = calculateTriggerTime()
+        sendMessageToAllClients("READY_FOR_RECORDING_STATUS_3:$triggerTime")
+        Log.d(TAG, "Trigger time sent to all slaves: $triggerTime")
     }
 
     fun stopServer() {
