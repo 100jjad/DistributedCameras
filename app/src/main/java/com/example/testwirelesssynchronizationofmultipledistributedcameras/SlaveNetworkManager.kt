@@ -22,7 +22,11 @@ object SlaveNetworkManager {
     private var input: BufferedReader? = null
     private var masterIp: String? = null
 
+
     // متغیرهای مربوط به همگام‌سازی زمان
+    private var minDelay = Long.MAX_VALUE
+    private var bestOffset = 0L
+
     private var totalDelay = 0L
     private var totalOffset = 0L
     private var validResponses = 0
@@ -137,6 +141,27 @@ object SlaveNetworkManager {
     /**
      * شروع به همگام‌سازی زمان با مستر (ارسال چندین درخواست TIME_REQUEST)
      */
+    // بازنشانی مقادیر برای هر دور جدید همگام‌سازی
+    fun synchronizeTime() {
+        timeSyncScope.launch {
+            try {
+                minDelay = Long.MAX_VALUE
+                bestOffset = 0L
+                requestTimes.clear()
+                requestReciveTime.clear()
+                repeat(10) {
+                    val currentRequestId = requestId++
+                    requestTimes[currentRequestId] = System.currentTimeMillis()
+                    sendMessage("TIME_REQUEST:$currentRequestId")
+                    delay(500)
+                }
+            } catch (e: Exception) {
+                listener?.onError("خطا در همگام‌سازی زمان: ${e.message}")
+            }
+        }
+
+    }
+/*
     fun synchronizeTime() {
         timeSyncScope.launch {
             try {
@@ -159,6 +184,7 @@ object SlaveNetworkManager {
             }
         }
     }
+*/
 
     /**
      * پردازش پیام‌های دریافتی از مستر
@@ -183,13 +209,13 @@ object SlaveNetworkManager {
             }
             message.startsWith("READY_FOR_RECORDING") -> {
                 listener?.onReadyForRecording(message)
-            }
+            }/*
             message.startsWith("TRIGGER_TIME:") -> {
                 val triggerTime = message.removePrefix("TRIGGER_TIME:").toLongOrNull()
                 if (triggerTime != null) {
                     scheduleRecording(triggerTime)
                 }
-            }
+            }*/
             else -> {
                 listener?.onError("پیام ناشناخته دریافت شد: $message")
             }
@@ -209,21 +235,24 @@ object SlaveNetworkManager {
                 val t4 = System.currentTimeMillis()
                 val t1 = requestTimes[reqId] ?: return
 
-                requestReciveTime[reqId] = (requestReciveTime[reqId] ?: 0) + 1
-
                 if (t2 != null && t3 != null) {
                     val delay = (t4 - t1) - (t3 - t2)
                     val offset = ((t2 - t1) + (t3 - t4)) / 2
-                    totalDelay += delay
-                    totalOffset += offset
-                    validResponses++
 
-                    if (validResponses > 7) {
-                        val avgDelay = totalDelay / validResponses
-                        val avgOffset = totalOffset / validResponses
-                        TimeSyncManager.setDelay(avgDelay)
-                        TimeSyncManager.setOffset(avgOffset)
-                        listener?.onTimeSyncUpdated(avgDelay, avgOffset)
+                    // انتخاب کمترین تأخیر
+                    if (delay < minDelay) {
+                        minDelay = delay
+                        bestOffset = offset
+                    }
+
+                    // بعد از دریافت حداقل 8 پاسخ، همگام‌سازی رو به‌روزرسانی کنید
+                    if (requestReciveTime[reqId] == null) {
+                        requestReciveTime[reqId] = 1
+                        if (requestReciveTime.size >= 8) {
+                            TimeSyncManager.setDelay(minDelay)
+                            TimeSyncManager.setOffset(bestOffset)
+                            listener?.onTimeSyncUpdated(minDelay, bestOffset)
+                        }
                     }
                 }
             }
@@ -231,6 +260,8 @@ object SlaveNetworkManager {
             listener?.onError("خطا در پردازش TIME_RESPONSE: ${e.message}")
         }
     }
+
+
 
 
     fun getLocalIpAddress(): String? {
@@ -284,4 +315,6 @@ object SlaveNetworkManager {
     private fun startRecording() {
         listener?.onReadyForRecording("TRIGGERED_RECORDING")
     }
+
+
 }

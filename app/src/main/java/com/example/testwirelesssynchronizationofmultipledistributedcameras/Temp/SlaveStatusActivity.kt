@@ -1,4 +1,4 @@
-package com.example.testwirelesssynchronizationofmultipledistributedcameras
+package com.example.testwirelesssynchronizationofmultipledistributedcameras.Temp
 
 import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
@@ -10,8 +10,10 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.testwirelesssynchronizationofmultipledistributedcameras.CustomCameraUI
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.CameraSettings
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.TimeSyncManager
+import com.example.testwirelesssynchronizationofmultipledistributedcameras.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,9 +21,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
-import java.awt.font.NumericShaper
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter

@@ -43,7 +43,7 @@
 
         <activity android:name=".Temp.MasterStatusActivity" />
         <activity android:name=".MasterActivity" />
-        <activity android:name=".SlaveStatusActivity"
+        <activity android:name=".Temp.SlaveStatusActivity"
             android:exported="true"/>
         <activity android:name=".SlaveActivity"
             android:exported="true"/>

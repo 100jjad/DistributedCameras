@@ -239,15 +239,9 @@ object MasterNetworkManager {
         }
     }
 
-    private fun calculateTriggerTime(): Long {
-        val maxOffset = slaveOffsets.values.maxOrNull() ?: 0L
-        val additionalTime = 5000L // 5 ثانیه
-        val currentTime = System.currentTimeMillis()
-        return currentTime + maxOffset + additionalTime
-    }
 
     fun sendTriggerTimeToSlaves() {
-        val triggerTime = calculateTriggerTime()
+        val triggerTime = System.currentTimeMillis() + 10000 // 10 ثانیه بعد از زمان فعلی مستر
         sendMessageToAllClients("READY_FOR_RECORDING_STATUS_3:$triggerTime")
         Log.d(TAG, "Trigger time sent to all slaves: $triggerTime")
     }

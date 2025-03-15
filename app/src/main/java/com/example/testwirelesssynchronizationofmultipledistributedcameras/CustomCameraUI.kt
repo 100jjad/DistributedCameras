@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.util.Range
 import android.view.MotionEvent
@@ -27,6 +28,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.CameraSettings
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.TimeSyncManager
 import java.io.File
+import java.util.Locale
 
 
 class CustomCameraUI : Activity() , SlaveNetworkListener {
@@ -43,6 +45,11 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
     private lateinit var ivCaptureImage: ImageView
     private lateinit var ivVideoSaved: ImageView
     private lateinit var ivRotateCamera: ImageView
+
+
+
+    private lateinit var txvtime: TextView
+
 
     // سه SeekBar برای Exposure, ISO و Focus
     private lateinit var exposureSlider: SeekBar
@@ -262,6 +269,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         isoSlider = findViewById(R.id.iso_slider)
         focusSlider = findViewById(R.id.focus_slider)
         controlLayout = findViewById(R.id.control_layout)
+        txvtime = findViewById(R.id.tv_timestart)
 
 
         // دریافت مقادیر از Intent
@@ -314,7 +322,6 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         ivCaptureImage.setOnClickListener {
 
             Toast.makeText(this, "Video Recorde clicked", Toast.LENGTH_SHORT).show()
-            MasterNetworkManager.sendTriggerTimeToSlaves()
             MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING_STATUS_2")
             // اکشن برای دکمه ضبط
             if (!isRecording) {
@@ -322,6 +329,18 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             } else {
                 stopRecording()
 
+            }
+        }
+
+        ivCaptureImage.setOnLongClickListener{
+            if (!isRecording) {
+                // ضبط زمان‌بندی‌شده
+                startScheduledRecording()
+                true // لمس طولانی رو مصرف می‌کنیم
+            } else {
+                // توقف ضبط
+                stopRecording()
+                true // لمس طولانی رو مصرف می‌کنیم
             }
         }
 
@@ -539,7 +558,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
     }
 
     override fun onTimeSyncUpdated(delay: Long, offset: Long) {
-        TODO("Not yet implemented")
+        Log.d("CustomCameraUI", "Time sync updated: delay=$delay, offset=$offset")
     }
 
     override fun onReadyForRecording(message : String) {
@@ -557,11 +576,108 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                 }
             }
         }
+        else if (message.startsWith("READY_FOR_RECORDING_STATUS_3:")) {
+            runOnUiThread {
+                val triggerTimeStr = message.removePrefix("READY_FOR_RECORDING_STATUS_3:")
+                val triggerTime = triggerTimeStr.toLongOrNull()
+                if (triggerTime != null) {
+                    scheduleRecording(triggerTime, applyOffset = true)
+                } else {
+                    Toast.makeText(this@CustomCameraUI, "زمان شروع نامعتبر است", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     override fun onError(errorMessage: String) {
         TODO("Not yet implemented")
     }
 
+    private fun startScheduledRecording() {
+        if (savedRole == "master") {
+            val triggerTime = System.currentTimeMillis() + 10000 // 10 ثانیه بعد
+            MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING_STATUS_3:$triggerTime")
+            scheduleRecording(triggerTime, applyOffset = false) // برای مستر بدون افست
+            Toast.makeText(this, "ضبط زمان‌بندی‌شده برای مستر آماده شد", Toast.LENGTH_SHORT).show()
+        } else {
+            // برای اسلیو، منتظر پیام از مستر باش
+            Toast.makeText(this, "در حال آماده‌سازی ضبط زمان‌بندی‌شده", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun scheduleRecording(triggerTime: Long, applyOffset: Boolean = true) {
+        // محاسبه زمان ماشه محلی
+        val localTriggerTime = if (applyOffset) {
+            val offset = TimeSyncManager.getOffset()
+            triggerTime - offset // برای اسلیو، افست اعمال می‌شه
+        } else {
+            triggerTime // برای مستر، بدون افست
+        }
+
+        // محاسبه تاخیر تا زمان ماشه
+        val currentTime = System.currentTimeMillis()
+        val delayTime = localTriggerTime - currentTime
+
+        // آماده‌سازی مسیر فایل
+        val outputFilePath = getVideoOutputPath(this)
+
+        if (delayTime > 0) {
+            // شروع ترد برای زمان‌بندی
+            Thread {
+                // صبر کردن تا زمان ماشه
+                Thread.sleep(delayTime)
+
+                // شروع ضبط تو زمان ماشه
+                runOnUiThread {
+                    camera2.startRecordingVideo()
+                    val localStartTime = System.currentTimeMillis()
+                    displayLocalTime(localStartTime)
+                    isRecording = true
+                    ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
+                    Toast.makeText(this, "ضبط شروع شد", Toast.LENGTH_SHORT).show()
+                }
+            }.start()
+
+            // اجرای آماده‌سازی بعد از تنظیم ترد
+            runOnUiThread {
+                camera2.prepareVideoRecordingSession(
+                    context = this,
+                    outputFile = outputFilePath,
+                    currentExposureValue = exposureValue,
+                    currentIsoValue = isoValue,
+                    currentFocusValue = focusValue,
+                    framerate = frameRate?.toInt() ?: 30,
+                    autostart = false
+                )
+            }
+        } else {
+            // اگه زمان ماشه گذشته باشه، فوراً ضبط رو شروع کن
+            runOnUiThread {
+                val localStartTime = System.currentTimeMillis()
+                displayLocalTime(localStartTime)
+                camera2.prepareVideoRecordingSession(
+                    context = this,
+                    outputFile = outputFilePath,
+                    currentExposureValue = exposureValue,
+                    currentIsoValue = isoValue,
+                    currentFocusValue = focusValue,
+                    framerate = frameRate?.toInt() ?: 30,
+                    autostart = true
+                )
+                isRecording = true
+                ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
+                Toast.makeText(this, "ضبط فوراً شروع شد", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    private fun displayLocalTime(localTime: Long) {
+        val adjustedTime = if (savedRole == "slave") {
+            localTime + TimeSyncManager.getOffset() // اعمال افست برای اسلیو
+        } else {
+            localTime // برای مستر بدون تغییر
+        }
+        val formattedTime = java.text.SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(adjustedTime)
+        txvtime.text = formattedTime
+    }
 
 }
