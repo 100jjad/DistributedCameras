@@ -54,7 +54,7 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.13" />
+        app:layout_constraintVertical_bias="0.26999998" />
 
     <ImageView
         android:id="@+id/iv_capture_image"
@@ -153,15 +153,16 @@
         app:layout_constraintEnd_toEndOf="@+id/iv_camera_timer"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.100000024" />
 
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/control_layout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:rotation="-90"
         android:visibility="gone"
+        android:rotation="-90"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -246,6 +247,31 @@
             app:layout_constraintEnd_toStartOf="@+id/focus_slider"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/iso_slider" />
+
+        <SeekBar
+            android:id="@+id/zoom_slider"
+            android:layout_width="150dp"
+            android:layout_height="30dp"
+            android:max="4"
+            android:progressTint="@color/white"
+            android:thumb="@drawable/expo"
+            android:thumbTint="@color/white"
+            app:layout_constraintEnd_toEndOf="@id/focus_slider"
+            app:layout_constraintStart_toStartOf="@id/focus_slider"
+            app:layout_constraintTop_toBottomOf="@id/focus_slider" />
+
+        <TextView
+            android:id="@+id/tv_zoom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Zoom"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/zoom_slider"
+            app:layout_constraintEnd_toStartOf="@+id/zoom_slider"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/focus_slider" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -29,11 +29,21 @@ import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataC
 import com.example.testwirelesssynchronizationofmultipledistributedcameras.DataClass.TimeSyncManager
 import java.io.File
 import java.util.Locale
+import kotlin.math.ceil
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 
 class CustomCameraUI : Activity() , SlaveNetworkListener {
     private lateinit var textureView: AutoFitTextureView
     private lateinit var camera2: Camera2
+
+    private var framePeriod: Double? = null // Frame period in milliseconds
+    private var tau: Double? = null // Period in milliseconds
+    private var tau0: Double? = null // Phase shift in milliseconds
+    private var isTauCalculated = false
+    private val handler = Handler(Looper.getMainLooper())
+    private var calculateFramePeriodRunnable: Runnable? = null
 
     // متغیرها برای ذخیره مقادیر
     private var flashStatus: String? = null
@@ -46,15 +56,13 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
     private lateinit var ivVideoSaved: ImageView
     private lateinit var ivRotateCamera: ImageView
 
-
-
     private lateinit var txvtime: TextView
-
 
     // سه SeekBar برای Exposure, ISO و Focus
     private lateinit var exposureSlider: SeekBar
     private lateinit var isoSlider: SeekBar
     private lateinit var focusSlider: SeekBar
+    private lateinit var zoomSlider: SeekBar
     private lateinit var controlLayout: ConstraintLayout
 
     // محدوده‌های تنظیمات (برای Exposure, ISO و Focus)
@@ -70,10 +78,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
     var savedRole : String = ""
 
 
-    // متغیرهای مربوط به زوم
-    private lateinit var scaleGestureDetector: ScaleGestureDetector
     private var currentZoom: Float = 1f  // ۱ یعنی بدون زوم
-    // در صورت نیاز می‌توانید maxZoom را از دوربین دریافت کنید؛ در اینجا به صورت پیش‌فرض ۴ در نظر گرفته شده است.
     private var maxZoom: Float = 4f
 
     companion object {
@@ -91,10 +96,6 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         // SharedPreferences برای ذخیره نقش
         val sharedPreferences: SharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE)
         savedRole = sharedPreferences.getString("user_role", "slave").toString()
-
-
-        // مقداردهی ScaleGestureDetector برای تشخیص حرکات دو انگشتی
-        scaleGestureDetector = ScaleGestureDetector(this, ScaleListener())
 
         // مقداردهی اولیه برای TextureView
         textureView = findViewById(R.id.camera_view)
@@ -123,14 +124,14 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             SlaveNetworkManager.setListener(this)
         }
 
+        Handler(Looper.getMainLooper()).postDelayed({
+            calculateFramePeriod()
+        }, 2000)
+
         camera2.onResume() // مدیریت باز کردن دوربین و شروع Thread
+        Log.d(TAG, "Tau: $tau, Tau0: $tau0")
 
 
-
-        // پس از باز شدن دوربین، ممکن است بخواهید محدوده‌ی exposure compensation را دریافت کنید.
-        // اگر هنوز در دسترس نیست، می‌توانید یک تاخیر کوتاه داشته باشید یا آن را در callback مربوط به
-        // setUpCameraOutputs داخل Camera2 ذخیره کنید و سپس از طریق یک متد به اکتیویتی برگردانید.
-        // در اینجا فرض می‌کنیم که exposureCompensationRange پس از openCamera تنظیم شده است.
         exposureSlider.postDelayed({
             exposureTimeRange = camera2ExposureTimeRange() // متدی برای دریافت محدوده از Camera2 (یا مستقیماً استفاده از فیلد در Camera2 در صورت امکان)
             exposureTimeRange?.let {
@@ -157,6 +158,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                     // محاسبه مقدار جدید بر اساس درصد
                     exposureValue = lower + ((upper - lower) * fraction).toLong()
                     camera2.setExposureTime(exposureValue)
+                    scheduleCalculateFramePeriod()
                 }
             }
 
@@ -182,6 +184,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                     val lower = it.lower
                     isoValue = lower + progress
                     camera2.setISO(isoValue) // فرض بر این است که متد setIso در Camera2 وجود دارد
+                    scheduleCalculateFramePeriod()
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) { }
@@ -210,11 +213,38 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                     }
                     camera2.setManualFocus(focusValue)
                     Log.d("FocusDebug", "Progress: $progress, Fraction: $fraction, FocusValue: $focusValue")
+                    scheduleCalculateFramePeriod()
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+
+
+        zoomSlider.postDelayed({
+            val maxZoom = getMaxZoom() // دریافت حداکثر زوم
+            zoomSlider.max = 100 // تنظیم حداکثر مقدار SeekBar
+            zoomSlider.progress = 0 // مقدار اولیه (بدون زوم)
+
+            zoomSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    val zoomLevel = 1 + (maxZoom!! - 1) * (progress / 100.0f) // محاسبه مقدار زوم
+                    camera2.setZoom(zoomLevel) // اعمال زوم به دوربین
+                    scheduleCalculateFramePeriod() // به‌روزرسانی دوره فریم در صورت نیاز
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                    // می‌توانید عملیاتی هنگام شروع حرکت SeekBar اضافه کنید
+                }
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    // می‌توانید عملیاتی هنگام توقف حرکت SeekBar اضافه کنید
+                }
+            })
+        }, 500) // تأخیر برای اطمینان از آماده بودن دوربین
+
+
+
 
     }
 
@@ -268,6 +298,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         exposureSlider = findViewById(R.id.exposure_slider)
         isoSlider = findViewById(R.id.iso_slider)
         focusSlider = findViewById(R.id.focus_slider)
+        zoomSlider = findViewById(R.id.zoom_slider)
         controlLayout = findViewById(R.id.control_layout)
         txvtime = findViewById(R.id.tv_timestart)
 
@@ -352,6 +383,10 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             startActivity(intent)
         }
 
+        ivVideoSaved.setOnLongClickListener {
+            calculateFramePeriod()
+            true }
+
         ivRotateCamera.setOnClickListener {
             camera2.switchCamera()
         }
@@ -367,9 +402,6 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
         // اضافه کردن listener لمس روی preview
         textureView.setOnTouchListener { view, event ->
-
-            // ارسال رویداد لمس به ScaleGestureDetector برای کنترل زوم
-            scaleGestureDetector.onTouchEvent(event)
             if (event.pointerCount == 1) {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
@@ -377,18 +409,6 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
                         // حذف هر برنامه‌ی مخفی‌سازی قبلی
                         controlLayout.removeCallbacks(hideControlLayoutRunnable)
-
-                        /*
-                                            // فراخوانی متد بهینه‌سازی نوردهی قبل از نمایش seekbar
-                                            //camera2.autoOptimizeExposure()
-                                            exposureTimeRange?.let {
-                                                val lower = it.lower
-                                                val upper = it.upper
-                                                exposureSlider.max = 100  // مثلا اگر range = [-2, +2]، max = 4
-                                                // تنظیم مقدار پیش‌فرض نوار در وسط
-                                                //exposureSlider.progress = 50
-                                            }*/
-
 
                         // نمایش کل لایه‌ی کنترل
                         controlLayout.visibility = View.VISIBLE
@@ -410,10 +430,6 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                         // برنامه‌ریزی مخفی شدن نوار با تاخیر 10 ثانیه‌ای
                         controlLayout.postDelayed(hideControlLayoutRunnable, 20000)
 
-                        /*
-                                            exposureSlider.postDelayed({
-                                                exposureSlider.visibility = View.GONE
-                                            }, 10000)*/
                     }
                 }
             }
@@ -464,6 +480,17 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             val field = Camera2::class.java.getDeclaredField("focusRange")
             field.isAccessible = true
             field.get(camera2) as? Range<Float>
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun getMaxZoom(): Float? {
+        return try {
+            val field = Camera2::class.java.getDeclaredField("maxDigitalZoom")
+            field.isAccessible = true
+            field.get(camera2) as? Float
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -541,6 +568,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             currentZoom = currentZoom.coerceIn(1f, maxZoom)
             // فراخوانی تابع setZoom در کلاس دوربین برای اعمال زوم جدید
             camera2.setZoom(currentZoom)
+            scheduleCalculateFramePeriod()
             return true
         }
     }
@@ -577,7 +605,6 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             }
         }
         else if (message.startsWith("READY_FOR_RECORDING_STATUS_3:")) {
-            runOnUiThread {
                 val triggerTimeStr = message.removePrefix("READY_FOR_RECORDING_STATUS_3:")
                 val triggerTime = triggerTimeStr.toLongOrNull()
                 if (triggerTime != null) {
@@ -585,7 +612,6 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                 } else {
                     Toast.makeText(this@CustomCameraUI, "زمان شروع نامعتبر است", Toast.LENGTH_SHORT).show()
                 }
-            }
         }
     }
 
@@ -595,81 +621,92 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
     private fun startScheduledRecording() {
         if (savedRole == "master") {
-            val triggerTime = System.currentTimeMillis() + 10000 // 10 ثانیه بعد
-            MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING_STATUS_3:$triggerTime")
-            scheduleRecording(triggerTime, applyOffset = false) // برای مستر بدون افست
-            Toast.makeText(this, "ضبط زمان‌بندی‌شده برای مستر آماده شد", Toast.LENGTH_SHORT).show()
+            tau?.let { T ->
+                val currentTime = System.currentTimeMillis()
+                val delay = 5000L // 5 seconds ahead
+                val k = ((delay / T).toLong() + 1)
+                val triggerTime = currentTime + (k * T).toLong()
+                MasterNetworkManager.sendMessageToAllClients("READY_FOR_RECORDING_STATUS_3:$triggerTime")
+                scheduleRecording(triggerTime, applyOffset = false)
+                Toast.makeText(this, "Scheduled recording at $triggerTime", Toast.LENGTH_SHORT).show()
+            } ?: run {
+                Toast.makeText(this, "خطا: دوره فریم (tau) محاسبه نشده است", Toast.LENGTH_SHORT).show()
+            }
         } else {
-            // برای اسلیو، منتظر پیام از مستر باش
             Toast.makeText(this, "در حال آماده‌سازی ضبط زمان‌بندی‌شده", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun scheduleRecording(triggerTime: Long, applyOffset: Boolean = true) {
-        // محاسبه زمان ماشه محلی
-        val localTriggerTime = if (applyOffset) {
-            val offset = TimeSyncManager.getOffset()
-            triggerTime - offset // برای اسلیو، افست اعمال می‌شه
-        } else {
-            triggerTime // برای مستر، بدون افست
+        if (!isTauCalculated) {
+            Toast.makeText(this, "لطفاً صبر کنید تا دوره فریم محاسبه شود", Toast.LENGTH_SHORT).show()
+            Handler(Looper.getMainLooper()).postDelayed({ scheduleRecording(triggerTime, applyOffset) }, 500)
+            return
         }
 
-        // محاسبه تاخیر تا زمان ماشه
-        val currentTime = System.currentTimeMillis()
-        val delayTime = localTriggerTime - currentTime
-
-        // آماده‌سازی مسیر فایل
+        val localTriggerTime = if (applyOffset) {
+            triggerTime - TimeSyncManager.getOffset()
+        } else {
+            triggerTime
+        }
         val outputFilePath = getVideoOutputPath(this)
 
-        if (delayTime > 0) {
-            // شروع ترد برای زمان‌بندی
-            Thread {
-                // صبر کردن تا زمان ماشه
-                Thread.sleep(delayTime)
-
-                // شروع ضبط تو زمان ماشه
-                runOnUiThread {
-                    camera2.startRecordingVideo()
-                    val localStartTime = System.currentTimeMillis()
-                    displayLocalTime(localStartTime)
-                    isRecording = true
-                    ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
-                    Toast.makeText(this, "ضبط شروع شد", Toast.LENGTH_SHORT).show()
+        tau?.let { T ->
+            tau0?.let { tauZero ->
+                val k = ceil((localTriggerTime - tauZero) / T).toLong()
+                val startTime = tauZero + k * T
+                val delay = (startTime - System.currentTimeMillis()).toLong()
+                if (delay > 0) {
+                    Thread {
+                        Thread.sleep(delay)
+                        runOnUiThread {
+                            val localStartTime = System.currentTimeMillis()
+                            displayLocalTime(localStartTime)
+                            camera2.startRecordingVideo()
+                            isRecording = true
+                            ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
+                            Toast.makeText(this, "Recording started at $startTime", Toast.LENGTH_SHORT).show()
+                        }
+                    }.start()
+                    runOnUiThread {
+                        camera2.prepareVideoRecordingSession(
+                            context = this,
+                            outputFile = outputFilePath,
+                            currentExposureValue = exposureValue,
+                            currentIsoValue = isoValue,
+                            currentFocusValue = focusValue,
+                            framerate = frameRate?.toInt() ?: 30,
+                            autostart = false
+                        )
+                    }
+                } else {
+                    runOnUiThread {
+                        val localStartTime = System.currentTimeMillis()
+                        displayLocalTime(localStartTime)
+                        camera2.prepareVideoRecordingSession(
+                            context = this,
+                            outputFile = outputFilePath,
+                            currentExposureValue = exposureValue,
+                            currentIsoValue = isoValue,
+                            currentFocusValue = focusValue,
+                            framerate = frameRate?.toInt() ?: 30,
+                            autostart = true
+                        )
+                        isRecording = true
+                        ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
+                        Toast.makeText(this, "Recording started immediately at $startTime", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }.start()
-
-            // اجرای آماده‌سازی بعد از تنظیم ترد
-            runOnUiThread {
-                camera2.prepareVideoRecordingSession(
-                    context = this,
-                    outputFile = outputFilePath,
-                    currentExposureValue = exposureValue,
-                    currentIsoValue = isoValue,
-                    currentFocusValue = focusValue,
-                    framerate = frameRate?.toInt() ?: 30,
-                    autostart = false
-                )
+                Log.d(TAG, "Tau: $T, Tau0: $tauZero, Delay: $delay, StartTime: $startTime")
+            } ?: run {
+                Toast.makeText(this, "خطا: فاز (tau0) محاسبه نشده است", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            // اگه زمان ماشه گذشته باشه، فوراً ضبط رو شروع کن
-            runOnUiThread {
-                val localStartTime = System.currentTimeMillis()
-                displayLocalTime(localStartTime)
-                camera2.prepareVideoRecordingSession(
-                    context = this,
-                    outputFile = outputFilePath,
-                    currentExposureValue = exposureValue,
-                    currentIsoValue = isoValue,
-                    currentFocusValue = focusValue,
-                    framerate = frameRate?.toInt() ?: 30,
-                    autostart = true
-                )
-                isRecording = true
-                ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
-                Toast.makeText(this, "ضبط فوراً شروع شد", Toast.LENGTH_SHORT).show()
-            }
+        } ?: run {
+            Toast.makeText(this, "خطا: دوره فریم (tau) محاسبه نشده است", Toast.LENGTH_SHORT).show()
         }
+
     }
+
     private fun displayLocalTime(localTime: Long) {
         val adjustedTime = if (savedRole == "slave") {
             localTime + TimeSyncManager.getOffset() // اعمال افست برای اسلیو
@@ -678,6 +715,64 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         }
         val formattedTime = java.text.SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(adjustedTime)
         txvtime.text = formattedTime
+    }
+
+    private fun scheduleCalculateFramePeriod() {
+        calculateFramePeriodRunnable?.let { handler.removeCallbacks(it) } // حذف فراخوانی قبلی
+        calculateFramePeriodRunnable = Runnable { calculateFramePeriod() }
+        handler.postDelayed(calculateFramePeriodRunnable!!, 500) // تأخیر 500 میلی‌ثانیه
+    }
+
+    private fun calculateFramePeriod() {
+        if (camera2.cameraCaptureSession == null) {
+            Log.e(TAG, "Camera capture session is not ready")
+            Toast.makeText(this, "خطا: دوربین آماده نیست", Toast.LENGTH_SHORT).show()
+            return
+        }
+        camera2.collectTimestampsWithoutStopping(50) { timestampsNs ->
+            if (timestampsNs.size >= 2) {
+                val tauNs = estimateTau(timestampsNs)
+                tau = tauNs / 1_000_000.0
+                val t1 = timestampsNs[0].toDouble()
+                val N = timestampsNs.map { ((it - t1) / tauNs).roundToInt() }
+                tau0 = (timestampsNs.zip(N).map { (t, n) -> (t - n * tauNs) }.average()) / 1_000_000.0
+                isTauCalculated = true
+                Log.d(TAG, "Estimated tau: $tau ms, tau0: $tau0 ms for role: $savedRole")
+                Toast.makeText(this, "Tau: $tau ms, Tau0: $tau0 ms", Toast.LENGTH_SHORT).show()
+            } else {
+                Log.e(TAG, "Not enough timestamps: ${timestampsNs.size}")
+                Toast.makeText(this, "خطا: تعداد timestampها کافی نیست (${timestampsNs.size})", Toast.LENGTH_SHORT).show()
+                // تلاش مجدد برای جمع‌آوری
+                Handler(Looper.getMainLooper()).postDelayed({ calculateFramePeriod() }, 1000)
+            }
+        }
+    }
+
+    fun estimateTau(timestampsNs: List<Long>): Double {
+        if (timestampsNs.size < 2) return 0.0
+        // محاسبه اختلافات بین زمان‌ها به‌صورت نانوثانیه
+        val deltas = timestampsNs.zipWithNext { a, b -> (b - a).toDouble() }
+        // مقدار اولیه τ را بر اساس کمترین اختلاف محاسبه می‌کنیم
+        val tauInit = deltas.minOrNull() ?: return 0.0
+        // تخمین مقدار ΔN_i با تقسیم هر اختلاف بر τ اولیه و گرد کردن به عدد صحیح
+        val deltaNs = deltas.map { (it / tauInit).roundToInt() }
+        // خوشه‌بندی اختلافات بر اساس مقدار ΔN_i
+        val clusters = deltaNs.distinct().associateWith { k ->
+            deltas.filterIndexed { index, _ -> deltaNs[index] == k }
+        }
+        // حل زیرمسائل: محاسبه τ_k برای هر خوشه
+        val tauK = clusters.mapValues { (k, deltasK) ->
+            deltasK.average() / k
+        }
+        // محاسبه وزن هر خوشه بر اساس تعداد داده‌ها و مقدار k^2
+        val weights = clusters.mapValues { (k, deltasK) -> k.toDouble().pow(2) * deltasK.size }
+        val totalWeight = weights.values.sum()
+        // اگر مجموع وزن‌ها مثبت باشد، میانگین وزنی τ_k محاسبه و بازگردانده می‌شود
+        return if (totalWeight > 0) {
+            tauK.entries.sumOf { (k, tauK) -> weights[k]!! * tauK } / totalWeight
+        } else {
+            tauInit // در غیر این صورت مقدار اولیه τ برگردانده می‌شود
+        }
     }
 
 }

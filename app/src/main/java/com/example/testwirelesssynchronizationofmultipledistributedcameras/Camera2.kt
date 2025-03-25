@@ -48,7 +48,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     private var cameraDevice: CameraDevice? = null
 
     //
-    private var cameraCaptureSession: CameraCaptureSession? = null
+    public var cameraCaptureSession: CameraCaptureSession? = null
+    private var cameraReadyCallback: CameraReadyCallback? = null
 
     // capture request builder for camera.
     private var captureRequestBuilder: CaptureRequest.Builder? = null
@@ -64,6 +65,9 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     private var mediaRecorder: MediaRecorder? = null
     private var isRecordingVideo: Boolean = false
 
+    private var currentExposureTime: Long? = null
+    private var currentIso: Int? = null
+    private var currentFocus: Float? = null
 
     private var surface: Surface? = null
     private var sensorArraySize: Rect? = null
@@ -614,6 +618,17 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
                 CaptureRequest.CONTROL_AE_MODE,
                 CameraMetadata.CONTROL_AE_MODE_OFF
             )
+            currentExposureTime?.let {
+                captureRequestBuilder!!.set(CaptureRequest.SENSOR_EXPOSURE_TIME, it)
+            }
+            currentIso?.let {
+                captureRequestBuilder!!.set(CaptureRequest.SENSOR_SENSITIVITY, it)
+            }
+            currentFocus?.let {
+                captureRequestBuilder!!.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+                captureRequestBuilder!!.set(CaptureRequest.LENS_FOCUS_DISTANCE, it)
+            }
+
             captureRequestBuilder!!.addTarget(previewSurface!!)
             /*captureRequestBuilder!!.addTarget(previewSurface!!)*/
 
@@ -655,6 +670,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
                             we set flash after the preview request is processed to ensure flash fires only during a still capture. */
                             setFlashMode(captureRequestBuilder!!, true)
 
+                            cameraReadyCallback?.onCameraReady()
 
                         } catch (e: CameraAccessException) {
                             e.printStackTrace()
@@ -938,10 +954,12 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
 
     fun setExposureTime(exposureTime: Long) {
+        currentExposureTime = exposureTime
         // مطمئن شوید که exposureTime در بازه مجاز قرار دارد
         captureRequestBuilder?.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime)
+        captureRequest = captureRequestBuilder?.build()
         cameraCaptureSession?.setRepeatingRequest(
-            captureRequestBuilder!!.build(),
+            captureRequest!!,
             cameraCaptureCallBack,
             backgroundHandler
         )
@@ -969,6 +987,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
 
     fun setISO(value: Int) {
+        currentIso = value
         // غیرفعال کردن نوردهی خودکار برای کنترل دستی ISO
         captureRequestBuilder?.set(
             CaptureRequest.CONTROL_AE_MODE,
@@ -976,8 +995,9 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         )
         // تنظیم دستی ISO
         captureRequestBuilder?.set(CaptureRequest.SENSOR_SENSITIVITY, value)
+        captureRequest = captureRequestBuilder?.build()
         cameraCaptureSession?.setRepeatingRequest(
-            captureRequestBuilder!!.build(),
+            captureRequest!!,
             cameraCaptureCallBack,
             backgroundHandler
         )
@@ -989,6 +1009,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     }
 
     fun setManualFocus(focusDistance: Float) {
+        currentFocus = focusDistance
         try {
             // توقف درخواست‌های قبلی برای جلوگیری از تداخل
             cameraCaptureSession?.stopRepeating()
@@ -996,10 +1017,10 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
             // تنظیم فوکوس دستی
             captureRequestBuilder?.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
             captureRequestBuilder?.set(CaptureRequest.LENS_FOCUS_DISTANCE, focusDistance)
-
+            captureRequest = captureRequestBuilder?.build()
             // ارسال درخواست جدید
             cameraCaptureSession?.setRepeatingRequest(
-                captureRequestBuilder!!.build(),
+                captureRequest!!,
                 cameraCaptureCallBack,
                 backgroundHandler
             )
@@ -1013,6 +1034,37 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     fun autoOptimizeFocus() {
         // تنظیم فوکوس به حالت بی‌نهایت (معمولاً مقدار 0 در Camera2 API نشان‌دهنده فوکوس بی‌نهایت است)
         setManualFocus(0f)
+    }
+
+
+    // تابع جدید برای تنظیم زوم
+    fun setZoom(zoomLevel: Float) {
+        // zoomLevel باید بین 1 (بدون زوم) و maxDigitalZoom باشد
+        val newZoom = zoomLevel.coerceIn(1f, maxDigitalZoom)
+        currentZoom = newZoom  // ذخیره مقدار زوم فعلی
+        sensorArraySize?.let { sensorRect ->
+            val centerX = sensorRect.centerX()
+            val centerY = sensorRect.centerY()
+            // محاسبه عرض و ارتفاع جدید crop region بر اساس زوم
+            val newWidth = (sensorRect.width() / newZoom).toInt()
+            val newHeight = (sensorRect.height() / newZoom).toInt()
+            val left = centerX - newWidth / 2
+            val top = centerY - newHeight / 2
+            val right = left + newWidth
+            val bottom = top + newHeight
+            val zoomRect = Rect(left, top, right, bottom)
+            captureRequestBuilder?.set(CaptureRequest.SCALER_CROP_REGION, zoomRect)
+            captureRequest = captureRequestBuilder?.build()
+            try {
+                cameraCaptureSession?.setRepeatingRequest(
+                    captureRequest!!,
+                    cameraCaptureCallBack,
+                    backgroundHandler
+                )
+            } catch (e: CameraAccessException) {
+                e.printStackTrace()
+            }
+        }
     }
 
 
@@ -1239,34 +1291,6 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     }
 
 
-    // تابع جدید برای تنظیم زوم
-    fun setZoom(zoomLevel: Float) {
-        // zoomLevel باید بین 1 (بدون زوم) و maxDigitalZoom باشد
-        val newZoom = zoomLevel.coerceIn(1f, maxDigitalZoom)
-        currentZoom = newZoom  // ذخیره مقدار زوم فعلی
-        sensorArraySize?.let { sensorRect ->
-            val centerX = sensorRect.centerX()
-            val centerY = sensorRect.centerY()
-            // محاسبه عرض و ارتفاع جدید crop region بر اساس زوم
-            val newWidth = (sensorRect.width() / newZoom).toInt()
-            val newHeight = (sensorRect.height() / newZoom).toInt()
-            val left = centerX - newWidth / 2
-            val top = centerY - newHeight / 2
-            val right = left + newWidth
-            val bottom = top + newHeight
-            val zoomRect = Rect(left, top, right, bottom)
-            captureRequestBuilder?.set(CaptureRequest.SCALER_CROP_REGION, zoomRect)
-            try {
-                cameraCaptureSession?.setRepeatingRequest(
-                    captureRequestBuilder!!.build(),
-                    cameraCaptureCallBack,
-                    backgroundHandler
-                )
-            } catch (e: CameraAccessException) {
-                e.printStackTrace()
-            }
-        }
-    }
 
 
     fun collectTimestampsWithoutStopping(numFrames: Int = 50, callback: (List<Long>) -> Unit) {
@@ -1279,8 +1303,18 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
             ) {
                 val timestamp = result.get(CaptureResult.SENSOR_TIMESTAMP) ?: return
                 timestamps.add(timestamp)
-                if (timestamps.size >= numFrames) {
-                    callback(timestamps)
+                if (timestamps.size == numFrames) { // دقیقاً وقتی به numFrames رسید
+                    callback(timestamps) // فراخوانی callback با لیست timestampها
+                    // برگرداندن درخواست تکراری به حالت اصلی
+                    try {
+                        session.setRepeatingRequest(
+                            captureRequest!!, // درخواست اصلی پیش‌نمایش
+                            cameraCaptureCallBack, // callback اصلی پیش‌نمایش
+                            backgroundHandler
+                        )
+                    } catch (e: CameraAccessException) {
+                        Log.e("Camera2", "Error resetting repeating request: ${e.message}")
+                    }
                 }
             }
         }
@@ -1378,4 +1412,14 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         }
     }
 
+
+
+    fun setCameraReadyCallback(callback: CameraReadyCallback) {
+        this.cameraReadyCallback = callback
+    }
+
+
+    interface CameraReadyCallback {
+        fun onCameraReady()
+    }
 }
