@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layoutDirection="rtl"
+    android:layoutDirection="ltr"
     >
 
     <LinearLayout
@@ -28,7 +28,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:text=" وضعیت اسلیو"
+            android:text="Slave Status"
             android:textColor="@color/black"
             android:textSize="24sp" />
 
@@ -43,7 +43,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.5"
-                android:text="زمان محلی : "
+                android:text="Local Time: "
                 android:textSize="18sp" />
 
             <TextView
@@ -67,7 +67,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text=" نام مستر متصل شده: "
+                android:text="Connected Master Name: "
                 android:textSize="16sp" />
 
             <TextView
@@ -89,14 +89,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text=" وضعیت اتصال:"
+                android:text="Connection Status:"
                 android:textSize="16sp" />
 
             <TextView
                 android:id="@+id/tvConnectionStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="نامشخص"
+                android:text="Unknown"
                 android:textSize="16sp" />
         </LinearLayout>
 
@@ -106,7 +106,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text=" تنظیمات دریافت شده:"
+            android:text="Received Settings:"
             android:textColor="#000000"
             android:textSize="18sp" />
 
@@ -121,7 +121,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text=" فلاش:"
+                android:text="Flash:"
                 android:textSize="16sp" />
 
             <TextView
@@ -142,7 +142,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text=" نرخ فریم:"
+                android:text="Frame Rate:"
                 android:textSize="16sp" />
 
             <TextView
@@ -163,7 +163,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text=" مدت زمان ضبط:"
+                android:text="Recording Duration:"
                 android:textSize="16sp" />
 
             <TextView
@@ -173,9 +173,7 @@
                 android:textSize="16sp" />
         </LinearLayout>
 
-
     </LinearLayout>
-
 
     <!-- دکمه تایید تنظیمات -->
     <Button
@@ -184,13 +182,12 @@
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
         android:backgroundTint="@color/primary"
-        android:text=" تایید دریافت تنظیمات"
+        android:text="Confirm Settings Received"
         android:textColor="#FFFFFF"
         android:textSize="18sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.85"
         tools:layout_editor_absoluteX="8dp" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

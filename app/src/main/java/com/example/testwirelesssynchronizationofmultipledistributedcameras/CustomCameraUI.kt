@@ -47,7 +47,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
     // متغیرها برای ذخیره مقادیر
     private var flashStatus: String? = null
-    private var frameRate: String? = null
+    private var frameRate: Int? = null
     private var duration: String? = null
 
     // متغیرهای ImageView برای دکمه‌ها
@@ -133,17 +133,33 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
 
         exposureSlider.postDelayed({
-            exposureTimeRange = camera2ExposureTimeRange() // متدی برای دریافت محدوده از Camera2 (یا مستقیماً استفاده از فیلد در Camera2 در صورت امکان)
-            exposureTimeRange?.let {
-                val lower = it.lower
-                val upper = it.upper
-                exposureSlider.max = 100 // مثلا اگر range = [-2, +2]، max = 4
-                // تنظیم مقدار پیش‌فرض نوار در وسط
+            exposureTimeRange = camera2ExposureTimeRange()
+            if (exposureTimeRange == null) {
+                Log.e("CustomCameraUI", "exposureTimeRange is null")
+                Toast.makeText(this, "Error retrieving exposure range", Toast.LENGTH_SHORT).show()
+                return@postDelayed
+            }
+            exposureTimeRange?.let { range ->
+                val lower = range.lower.toDouble() // تبدیل به Double برای دقت بیشتر
+                val upper = range.upper.toDouble()
+                if (lower <= 0) {
+                    Log.e("CustomCameraUI", "Lower exposure time must be greater than zero")
+                    Toast.makeText(this, "Minimum exposure time must be greater than zero", Toast.LENGTH_SHORT).show()
+                    return@let
+                }
+                val frameRateInt = frameRate ?: 30
+                val maxExposureTime = (1_000_000_000 / frameRateInt).toLong() // حداکثر مجاز بر اساس فریم‌ریت
+                exposureSlider.max = 100
                 val defaultProgress = 50
                 exposureSlider.progress = defaultProgress
-                // محاسبه مقدار اولیه به صورت میانه
                 val fraction = defaultProgress.toFloat() / exposureSlider.max.toFloat()
-                exposureValue = lower + ((upper - lower) * fraction).toLong()
+                val maxAllowed = minOf(upper, maxExposureTime.toDouble())
+                // محاسبه لگاریتمی با تبدیل fraction به Double
+                val exposureValueDouble = lower * (maxAllowed / lower).pow(fraction.toDouble())
+                exposureValue = exposureValueDouble.toLong()
+                // محدود کردن به بازه مجاز
+                exposureValue = exposureValue.coerceIn(range.lower, maxExposureTime)
+                camera2.setExposureTime(exposureValue, frameRateInt)
             }
         }, 500)
 
@@ -151,19 +167,27 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         exposureSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 exposureTimeRange?.let { range ->
-                    val lower = range.lower      // کمترین زمان نوردهی (نانوثانیه)
-                    val upper = range.upper      // بیشترین زمان نوردهی (نانوثانیه)
-                    // محاسبه درصد پیشرفت (0 تا 1)
+                    val lower = range.lower.toDouble() // تبدیل به Double برای دقت بیشتر
+                    val upper = range.upper.toDouble()
+                    if (lower <= 0) {
+                        Log.e("CustomCameraUI", "Lower exposure time must be greater than zero")
+                        return@let
+                    }
+                    val frameRateInt = frameRate ?: 30
+                    val maxExposureTime = (1_000_000_000 / frameRateInt).toLong()
                     val fraction = progress.toFloat() / exposureSlider.max.toFloat()
-                    // محاسبه مقدار جدید بر اساس درصد
-                    exposureValue = lower + ((upper - lower) * fraction).toLong()
-                    camera2.setExposureTime(exposureValue)
+                    val maxAllowed = minOf(upper, maxExposureTime.toDouble())
+                    // محاسبه لگاریتمی با تبدیل fraction به Double
+                    val exposureValueDouble = lower * (maxAllowed / lower).pow(fraction.toDouble())
+                    exposureValue = exposureValueDouble.toLong()
+                    // محدود کردن به بازه مجاز
+                    exposureValue = exposureValue.coerceIn(range.lower, maxExposureTime)
+                    camera2.setExposureTime(exposureValue, frameRateInt)
                     scheduleCalculateFramePeriod()
                 }
             }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) { }
-            override fun onStopTrackingTouch(seekBar: SeekBar?) { }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
 
@@ -305,7 +329,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
         // دریافت مقادیر از Intent
         flashStatus = intent.getStringExtra("flash_status")
-        frameRate = intent.getStringExtra("frame_rate")
+        frameRate = intent.getStringExtra("frame_rate")?.toIntOrNull() ?: 30
         duration = intent.getStringExtra("duration")
 
         // پیدا کردن TextViewها
@@ -313,7 +337,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
         val tvTime: TextView = findViewById(R.id.tv_time)
 
 // مقداردهی به TextViewها
-        tvFps.text = frameRate
+        tvFps.text = frameRate.toString()
         tvTime.text = duration
 
         if (flashStatus=="روشن")
@@ -328,14 +352,14 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
         }
 
-/*
-        ivFlashAuto.setOnClickListener {
-            //فعال کردن فلاش دوربین در حالت پیش نمایش
-            camera2.setFlash(Camera2.FLASH.ON)
-            camera2.applyFlashChanges() // اعمال تغییرات
-            // فعال‌کردن فلاش ویدئو در حالت ضبط ویدئو به طور خود کار
-            //camera2.enableVideoFlash()
-        }*/
+        /*
+                ivFlashAuto.setOnClickListener {
+                    //فعال کردن فلاش دوربین در حالت پیش نمایش
+                    camera2.setFlash(Camera2.FLASH.ON)
+                    camera2.applyFlashChanges() // اعمال تغییرات
+                    // فعال‌کردن فلاش ویدئو در حالت ضبط ویدئو به طور خود کار
+                    //camera2.enableVideoFlash()
+                }*/
 
         ivFlashAuto.setOnClickListener {
             if (camera2.getFlash() == Camera2.FLASH.ON) {
@@ -502,7 +526,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
 // ادامه‌ی تنظیمات MediaRecorder یا سایر عملیات ذخیره‌سازی...
 
-        camera2.prepareVideoRecordingSession(this@CustomCameraUI , outputFilePath , exposureValue,isoValue , focusValue , frameRate?.toInt() ?: 30 , true)
+        camera2.prepareVideoRecordingSession(this@CustomCameraUI , outputFilePath , exposureValue,isoValue , focusValue , frameRate?: 30 , true)
         isRecording = true
         ivCaptureImage.setImageResource(R.drawable.stoprecordbutton)
         Toast.makeText(this, "Recording started", Toast.LENGTH_SHORT).show()
@@ -550,7 +574,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
 
         // اگر هنوز پوشه‌ای ایجاد نشده باشد، از پوشه fallbackDir (یا در نهایت filesDir) استفاده می‌کنیم
         if (videoDirectory == null) {
-            Toast.makeText(this@CustomCameraUI , "اگر هنوز پوشه\u200Cای ایجاد نشده باشد، از پوشه fallbackDir (یا در نهایت filesDir) استفاده می\u200Cکنیم" , Toast.LENGTH_LONG).show()
+            Toast.makeText(this@CustomCameraUI , "If no folder has been created yet, use fallbackDir (or ultimately filesDir)" , Toast.LENGTH_LONG).show()
             videoDirectory = context.getExternalFilesDir(null) ?: context.filesDir
         }
 
@@ -605,13 +629,13 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
             }
         }
         else if (message.startsWith("READY_FOR_RECORDING_STATUS_3:")) {
-                val triggerTimeStr = message.removePrefix("READY_FOR_RECORDING_STATUS_3:")
-                val triggerTime = triggerTimeStr.toLongOrNull()
-                if (triggerTime != null) {
-                    scheduleRecording(triggerTime, applyOffset = true)
-                } else {
-                    Toast.makeText(this@CustomCameraUI, "زمان شروع نامعتبر است", Toast.LENGTH_SHORT).show()
-                }
+            val triggerTimeStr = message.removePrefix("READY_FOR_RECORDING_STATUS_3:")
+            val triggerTime = triggerTimeStr.toLongOrNull()
+            if (triggerTime != null) {
+                scheduleRecording(triggerTime, applyOffset = true)
+            } else {
+                Toast.makeText(this@CustomCameraUI, "Invalid start time", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -630,16 +654,16 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                 scheduleRecording(triggerTime, applyOffset = false)
                 Toast.makeText(this, "Scheduled recording at $triggerTime", Toast.LENGTH_SHORT).show()
             } ?: run {
-                Toast.makeText(this, "خطا: دوره فریم (tau) محاسبه نشده است", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Error: Frame period (tau) not calculated", Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(this, "در حال آماده‌سازی ضبط زمان‌بندی‌شده", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Preparing scheduled recording", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun scheduleRecording(triggerTime: Long, applyOffset: Boolean = true) {
         if (!isTauCalculated) {
-            Toast.makeText(this, "لطفاً صبر کنید تا دوره فریم محاسبه شود", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please wait until the frame period is calculated", Toast.LENGTH_SHORT).show()
             Handler(Looper.getMainLooper()).postDelayed({ scheduleRecording(triggerTime, applyOffset) }, 500)
             return
         }
@@ -699,10 +723,10 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                 }
                 Log.d(TAG, "Tau: $T, Tau0: $tauZero, Delay: $delay, StartTime: $startTime")
             } ?: run {
-                Toast.makeText(this, "خطا: فاز (tau0) محاسبه نشده است", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Error: Phase (tau0) not calculated", Toast.LENGTH_SHORT).show()
             }
         } ?: run {
-            Toast.makeText(this, "خطا: دوره فریم (tau) محاسبه نشده است", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error: Frame period (tau) not calculated", Toast.LENGTH_SHORT).show()
         }
 
     }
@@ -726,7 +750,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
     private fun calculateFramePeriod() {
         if (camera2.cameraCaptureSession == null) {
             Log.e(TAG, "Camera capture session is not ready")
-            Toast.makeText(this, "خطا: دوربین آماده نیست", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error: Camera is not ready", Toast.LENGTH_SHORT).show()
             return
         }
         camera2.collectTimestampsWithoutStopping(50) { timestampsNs ->
@@ -741,7 +765,7 @@ class CustomCameraUI : Activity() , SlaveNetworkListener {
                 Toast.makeText(this, "Tau: $tau ms, Tau0: $tau0 ms", Toast.LENGTH_SHORT).show()
             } else {
                 Log.e(TAG, "Not enough timestamps: ${timestampsNs.size}")
-                Toast.makeText(this, "خطا: تعداد timestampها کافی نیست (${timestampsNs.size})", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Error: Not enough timestamps (${timestampsNs.size})", Toast.LENGTH_SHORT).show()
                 // تلاش مجدد برای جمع‌آوری
                 Handler(Looper.getMainLooper()).postDelayed({ calculateFramePeriod() }, 1000)
             }

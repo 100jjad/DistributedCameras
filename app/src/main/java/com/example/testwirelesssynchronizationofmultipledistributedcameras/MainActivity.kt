@@ -28,9 +28,11 @@ class MainActivity : AppCompatActivity() {
 
         val txvmaster: TextView = findViewById(R.id.tvmaster)
         val txvslave: TextView = findViewById(R.id.tvslave)
+        val txvselectrole: TextView = findViewById(R.id.tvselectrole)
         val typeface = ResourcesCompat.getFont(this, R.font.opensansregular)
         txvmaster.typeface = typeface
         txvslave.typeface = typeface
+        txvselectrole.typeface = typeface
 
 
 

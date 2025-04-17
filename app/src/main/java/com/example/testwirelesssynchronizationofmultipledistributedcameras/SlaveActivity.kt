@@ -44,7 +44,7 @@ class SlaveActivity : AppCompatActivity(), SlaveNetworkListener {
         btnConfirmSettings.setOnClickListener {
             // ارسال تایید تنظیمات به مستر
             SlaveNetworkManager.sendConfirmation()
-            Toast.makeText(this, "تنظیمات تایید شد!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Settings confirmed!", Toast.LENGTH_SHORT).show()
         }
 
         // تنظیم listener برای دریافت رویدادهای شبکه
@@ -85,7 +85,7 @@ class SlaveActivity : AppCompatActivity(), SlaveNetworkListener {
                 if (settings.flashEnabled) "روشن" else "خاموش"
             findViewById<TextView>(R.id.tvFrameRate).text = "${settings.frameRate}"
             findViewById<TextView>(R.id.tvDuration).text = "${settings.videoDuration} ثانیه"
-            Toast.makeText(this, "تنظیمات دوربین دریافت شد", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Camera settings received", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -177,7 +177,7 @@ class SlaveActivity : AppCompatActivity(), SlaveNetworkListener {
         val duration = findViewById<TextView>(R.id.tvDuration).text.toString()
 
         if (flashStatus.isEmpty() || frameRate.isEmpty() || duration.isEmpty()) {
-            Toast.makeText(this, "تنظیمات از مستر دریافت نشد", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Settings not received from master", Toast.LENGTH_SHORT).show()
         } else {
             val intent = Intent(this, CustomCameraUI::class.java)
             intent.putExtra("flash_status", flashStatus)

@@ -131,7 +131,6 @@
         app:layout_constraintTop_toTopOf="@+id/guideline3"
         app:layout_constraintVertical_bias="0.0">
 
-
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guideline11"
             android:layout_width="wrap_content"
@@ -178,7 +177,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="@+id/guideline12" />
 
-
         <ImageView
             android:id="@+id/ivslave"
             android:layout_width="0dp"
@@ -190,7 +188,6 @@
             app:layout_constraintStart_toStartOf="@+id/btnSlave"
             app:layout_constraintTop_toTopOf="parent"
             app:srcCompat="@drawable/slaveroid5" />
-
 
         <TextView
             android:id="@+id/tvslave"
@@ -224,10 +221,10 @@
         app:layout_constraintGuide_percent="0.9" />
 
     <TextView
-        android:id="@+id/textView3"
+        android:id="@+id/tvselectrole"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="نقش خود را انتخاب کنید"
+        android:text="Select your role"
         android:textColor="@color/black"
         android:textSize="24sp"
         android:padding="8dp"
@@ -235,6 +232,5 @@
         app:layout_constraintEnd_toStartOf="@+id/guideline5"
         app:layout_constraintStart_toStartOf="@+id/guideline4"
         app:layout_constraintTop_toTopOf="parent" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -953,16 +953,24 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     }
 
 
-    fun setExposureTime(exposureTime: Long) {
-        currentExposureTime = exposureTime
-        // مطمئن شوید که exposureTime در بازه مجاز قرار دارد
-        captureRequestBuilder?.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime)
+    fun setExposureTime(exposureTime: Long, frameRate: Int) {
+        // حداکثر زمان نوردهی مجاز بر اساس نرخ فریم (به نانوثانیه)
+        val maxExposureTime = (1_000_000_000 / frameRate).toLong() // 1 ثانیه = 1,000,000,000 نانوثانیه
+        // محدود کردن exposureTime به حداکثر مجاز
+        val adjustedExposureTime = if (exposureTime > maxExposureTime) maxExposureTime else exposureTime
+        currentExposureTime = adjustedExposureTime
+        captureRequestBuilder?.set(CaptureRequest.SENSOR_EXPOSURE_TIME, adjustedExposureTime)
         captureRequest = captureRequestBuilder?.build()
-        cameraCaptureSession?.setRepeatingRequest(
-            captureRequest!!,
-            cameraCaptureCallBack,
-            backgroundHandler
-        )
+        try {
+            cameraCaptureSession?.setRepeatingRequest(
+                captureRequest!!,
+                cameraCaptureCallBack,
+                backgroundHandler
+            )
+        } catch (e: CameraAccessException) {
+            Log.e("Camera2", "Error setting exposure time: ${e.message}")
+        }
+        Log.d("Camera2", "Exposure time set to $adjustedExposureTime ns (max: $maxExposureTime ns)")
     }
 
     fun autoOptimizeExposure() {
@@ -1167,6 +1175,10 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
         if (cameraDevice == null || !textureView.isAvailable || previewSize == null) return
 
+        cameraCaptureSession?.close()
+        cameraCaptureSession = null
+        videoTimestamps.clear()
+
         // پیکربندی MediaRecorder
         setUpMediaRecorder(context, outputFile, framerate)
         timestampFilePath = outputFile // ذخیره موقت مسیر فایل ویدئو
@@ -1279,7 +1291,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
                 mediaRecorder = null
                 // ذخیره timestampها بعد از توقف
                 timestampFilePath?.let { saveTimestampsToFile(activity, it) } // activity به عنوان context
-
+                cameraCaptureSession?.close()
+                cameraCaptureSession = null
             } catch (e: Exception) {
                 Log.e("Camera2", "خطا در توقف ضبط: ${e.message}")
                 e.printStackTrace()
@@ -1391,7 +1404,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
             Log.d("Camera2", "فایل timestamp در $uri ذخیره شد")
             // نمایش پیام به کاربر
             (context as? Activity)?.runOnUiThread {
-                Toast.makeText(context, "timestampها در DCIM/DistributedCameras ذخیره شدند", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Timestamps have been saved in DCIM/DistributedCameras", Toast.LENGTH_SHORT).show();
             }
         } ?: run {
             Log.e("Camera2", "خطا در ایجاد فایل timestamp")

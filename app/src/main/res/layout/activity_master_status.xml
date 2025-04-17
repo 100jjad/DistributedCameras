@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layoutDirection="rtl">
+    android:layoutDirection="ltr">
 
     <ScrollView
         android:id="@+id/scrollView3"
@@ -28,7 +28,7 @@
                 android:id="@+id/tvMasterTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" وضعیت مستر"
+                android:text="Master Status"
                 android:textColor="#000000"
                 android:textSize="24sp"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -40,7 +40,7 @@
                 android:id="@+id/textView4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="زمان محلی : "
+                android:text="Local Time: "
                 android:textSize="18sp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.0"
@@ -51,7 +51,7 @@
                 android:id="@+id/tvConnectedSlaves"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" اسلیوهای متصل شده:"
+                android:text="Connected Slaves:"
                 android:textSize="18sp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.0"
@@ -75,7 +75,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"
-                android:text=" تنظیمات دوربین:"
+                android:text="Camera Settings:"
                 android:textColor="#000000"
                 android:textSize="18sp"
                 app:layout_constraintStart_toStartOf="parent"
@@ -86,7 +86,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:text=" فلاش دوربین:"
+                android:text="Camera Flash:"
                 android:textSize="16sp"
                 app:layout_constraintBottom_toBottomOf="@+id/switchFlash"
                 app:layout_constraintEnd_toStartOf="@id/switchFlash"
@@ -115,7 +115,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:text=" مدت زمان ضبط (ثانیه):"
+                android:text="Recording Duration (seconds):"
                 android:textSize="16sp"
                 app:layout_constraintBottom_toBottomOf="@+id/etDuration"
                 app:layout_constraintEnd_toStartOf="@id/etDuration"
@@ -127,32 +127,17 @@
                 android:layout_width="200dp"
                 android:layout_height="70dp"
                 android:layout_marginTop="16dp"
-                android:hint="60 ثانیه"
+                android:hint="60 seconds"
                 android:inputType="number"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/tvConnectedSlaves"
                 app:layout_constraintTop_toBottomOf="@id/spinnerFrameRate" />
-            <!--
-
-            <Button
-                android:id="@+id/btnSendSettings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:backgroundTint="@color/primary"
-                android:text="ارسال تنظیمات به اسلیوها"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/etDuration" />
--->
 
             <TextView
                 android:id="@+id/textView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" نرخ فریم:"
+                android:text="Frame Rate:"
                 app:layout_constraintBottom_toBottomOf="@+id/spinnerFrameRate"
                 app:layout_constraintEnd_toEndOf="@+id/spinnerFrameRate"
                 app:layout_constraintHorizontal_bias="0.0"
@@ -181,7 +166,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:backgroundTint="@color/primary"
-        android:text="ارسال تنظیمات به اسلیوها"
+        android:text="Send Settings to Slaves"
         android:textColor="#FFFFFF"
         android:textSize="18sp"
         app:layout_constraintBottom_toTopOf="@+id/btnVideoRecord"
@@ -191,7 +176,6 @@
         app:layout_constraintVertical_bias="0.98"
         app:layout_marginBaseline="16dp" />
 
-
     <Button
         android:id="@+id/btnVideoRecord"
         android:layout_width="match_parent"
@@ -200,7 +184,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:backgroundTint="@color/primary"
-        android:text="ضبط ویدئو"
+        android:text="Record Video"
         android:textColor="#FFFFFF"
         android:textSize="18sp"
         app:layout_constraintBottom_toBottomOf="parent"
