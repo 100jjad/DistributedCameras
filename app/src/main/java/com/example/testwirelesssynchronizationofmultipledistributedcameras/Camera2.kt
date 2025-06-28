@@ -70,6 +70,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     private var currentFocus: Float? = null
 
     private var surface: Surface? = null
+    private var recorderSurface: Surface? = null // Surface جداگانه برای ضبط
     private var sensorArraySize: Rect? = null
     private var maxDigitalZoom: Float = 1f
     private var currentZoom: Float = 1f  // مقدار پیش‌فرض 1 یعنی بدون زوم
@@ -1133,8 +1134,12 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
             }
 
             // تنظیمات کدگذاری ویدئو – می‌توانید این مقادیر را تغییر دهید
-            setVideoEncodingBitRate(10000000)
+            setVideoEncodingBitRate(5000000)
             setVideoFrameRate(framerate)
+            captureRequestBuilder?.set(
+                CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                Range(framerate, framerate)
+            )
             // اندازه ویدئو را بر اساس previewSize انتخاب می‌کنیم
             previewSize?.let {
                 setVideoSize(it.width, it.height)
@@ -1168,6 +1173,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         framerate: Int,
         autostart: Boolean = false
     ) {
+        videoTimestamps.clear()
         // محاسبه یک‌باره در شروع ضبط
         val currentTimeMillis = System.currentTimeMillis()
         val elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
@@ -1186,8 +1192,10 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         // تنظیم اندازه بافر سطح TextureView
         val texture = textureView.surfaceTexture
         texture?.setDefaultBufferSize(previewSize!!.width, previewSize!!.height)
-        val previewSurface = Surface(texture)
-        val recorderSurface = mediaRecorder!!.surface
+        //val previewSurface = Surface(texture)
+        //val recorderSurface = mediaRecorder!!.surface
+        surface = Surface(texture)
+        recorderSurface = mediaRecorder!!.surface
 
         // ایجاد CaptureRequest برای حالت ضبط (TEMPLATE_RECORD)
         captureRequestBuilder =
@@ -1197,8 +1205,10 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
                 set(CaptureRequest.SENSOR_SENSITIVITY, currentIsoValue)
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
                 set(CaptureRequest.LENS_FOCUS_DISTANCE, currentFocusValue)
-                addTarget(previewSurface)
-                addTarget(recorderSurface)
+                addTarget(surface!!)
+                addTarget(recorderSurface!!)
+                //addTarget(previewSurface)
+                //addTarget(recorderSurface)
 
                 // اعمال زوم فعلی به CaptureRequest
                 if (currentZoom > 1f) {
@@ -1220,7 +1230,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
         // ایجاد یک capture session مشترک شامل هر دو سطح
         cameraDevice!!.createCaptureSession(
-            listOf(previewSurface, recorderSurface),
+            //listOf(previewSurface, recorderSurface),
+            listOf(surface!!, recorderSurface!!),
             object : CameraCaptureSession.StateCallback() {
                 override fun onConfigured(session: CameraCaptureSession) {
                     cameraCaptureSession = session
@@ -1251,6 +1262,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
      */
     fun startRecordingVideo() {
         try {
+            videoTimestamps.clear()
             // شروع ضبط به صورت فوری
             mediaRecorder?.start()
             isRecordingVideo = true
@@ -1307,7 +1319,8 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
 
 
     fun collectTimestampsWithoutStopping(numFrames: Int = 50, callback: (List<Long>) -> Unit) {
-        val timestamps = mutableListOf<Long>()
+        val phaseTimestamps = mutableListOf<Long>() // لیست جدا برای فاز
+        //val timestamps = mutableListOf<Long>()
         val captureCallback = object : CameraCaptureSession.CaptureCallback() {
             override fun onCaptureCompleted(
                 session: CameraCaptureSession,
@@ -1315,9 +1328,9 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
                 result: TotalCaptureResult
             ) {
                 val timestamp = result.get(CaptureResult.SENSOR_TIMESTAMP) ?: return
-                timestamps.add(timestamp)
-                if (timestamps.size == numFrames) { // دقیقاً وقتی به numFrames رسید
-                    callback(timestamps) // فراخوانی callback با لیست timestampها
+                phaseTimestamps.add(timestamp)
+                if (phaseTimestamps.size == numFrames) { // دقیقاً وقتی به numFrames رسید
+                    callback(phaseTimestamps) // فراخوانی callback با لیست timestampها
                     // برگرداندن درخواست تکراری به حالت اصلی
                     try {
                         session.setRepeatingRequest(
@@ -1346,6 +1359,7 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
     // Callback جدید برای جمع‌آوری timestampها در حین ضبط ویدئو
 // Wrapper برای cameraCaptureCallBack که timestampها رو هم جمع‌آوری می‌کنه
     private val timestampCollectingCallback = object : CameraCaptureSession.CaptureCallback() {
+        //private var frameCount = 0
         override fun onCaptureCompleted(
             session: CameraCaptureSession,
             request: CaptureRequest,
@@ -1359,9 +1373,18 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
             //videoTimestamps.add(timestamp)
 
             // جمع‌آوری timestamp و تبدیل به زمان Unix
-            val sensorTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP) ?: return
-            val unixTimestamp = convertToUnixTime(sensorTimestamp)
-            videoTimestamps.add(unixTimestamp)
+            if (isRecordingVideo) { // فقط وقتی ضبط فعاله
+                val sensorTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP) ?: return
+                val unixTimestamp = convertToUnixTime(sensorTimestamp)
+
+                // فقط اگر بزرگ‌تر از آخرین باشه اضافه کن:
+                val last = videoTimestamps.lastOrNull()
+                if (last == null || unixTimestamp > last) {
+                    videoTimestamps.add(unixTimestamp)
+                }
+            }
+//            frameCount++
+//            Log.d("Camera2", "Frame $frameCount captured with timestamp: $unixTimestamp")
         }
 
         override fun onCaptureProgressed(
@@ -1386,12 +1409,12 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         val videoFileName = File(videoFileName).name
 
         // ساخت نام فایل timestamp بر اساس نام ویدئو
-        val timestampFileName = videoFileName.replace(".mp4", "_timestamps.txt")
+        val timestampFileName = videoFileName.replace(".mp4", "_timestamps.csv")
 
         // ذخیره با MediaStore برای همه نسخه‌ها
         val values = ContentValues().apply {
             put(MediaStore.Files.FileColumns.DISPLAY_NAME, timestampFileName)
-            put(MediaStore.Files.FileColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.Files.FileColumns.MIME_TYPE, "text/csv")
             put(MediaStore.Files.FileColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/DistributedCameras")
         }
 
@@ -1399,7 +1422,13 @@ class Camera2(private val activity: Activity, private val textureView: AutoFitTe
         val uri = resolver.insert(MediaStore.Files.getContentUri("external"), values)
         uri?.let {
             resolver.openOutputStream(it)?.use { outputStream ->
-                outputStream.write(videoTimestamps.joinToString("\n").toByteArray())
+                // افزودن هدر برای فایل CSV
+                val csvHeader = "Timestamp\n"
+                outputStream.write(csvHeader.toByteArray())
+                // نوشتن timestampها به صورت CSV
+                val csvContent = videoTimestamps.joinToString("\n") { "$it" }
+                outputStream.write(csvContent.toByteArray())
+                //outputStream.write(videoTimestamps.joinToString("\n").toByteArray())
             }
             Log.d("Camera2", "فایل timestamp در $uri ذخیره شد")
             // نمایش پیام به کاربر
